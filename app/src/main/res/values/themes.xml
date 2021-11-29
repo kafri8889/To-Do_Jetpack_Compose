@@ -1,0 +1,39 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.TODO" parent="Theme.Material3.Light.NoActionBar">
+
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primary_light</item>
+        <item name="colorPrimaryContainer">@color/primary_container_light</item>
+        <item name="colorOnPrimary">@color/on_primary_light</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container_light</item>
+
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/secondary_light</item>
+        <item name="colorSecondaryContainer">@color/secondary_container_light</item>
+        <item name="colorOnSecondary">@color/on_secondary_container_light</item>
+        <item name="colorOnSecondaryContainer">@color/on_secondary_light</item>
+
+        <!-- Tertiary brand color. -->
+        <item name="colorTertiary">@color/tertiary_light</item>
+        <item name="colorTertiaryContainer">@color/tertiary_container_light</item>
+        <item name="colorOnTertiary">@color/on_tertiary_light</item>
+        <item name="colorOnTertiaryContainer">@color/on_tertiary_container_light</item>
+
+        <item name="colorSurface">@color/surface_light</item>
+        <item name="colorOnSurface">@color/on_surface_light</item>
+        <item name="colorSurfaceVariant">@color/surface_variant_light</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant_light</item>
+
+        <!-- Customize your theme here. -->
+        <item name="android:statusBarColor" tools:targetApi="l">@color/background_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+    </style>
+
+    <style name="Theme.TODO.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+</resources>
