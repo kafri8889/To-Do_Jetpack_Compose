@@ -5,7 +5,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.model.Category
+import com.anafthdev.todo.view_model.AppViewModel
 
 @Preview(showSystemUi = true)
 @Composable
@@ -33,7 +36,7 @@ fun CompleteScreenPreview() {
 	)
 	
 	Column {
-		CategoryItemInput { categoryName, hexColor -> }
+//		CategoryItemInput { categoryName, hexColor -> }
 		LazyColumn {
 			items(categories) { category ->
 				CategoryItem(
@@ -63,6 +66,5 @@ fun CategoriesScreenPreview() {
 @Preview(showSystemUi = true)
 @Composable
 fun CategoryScreenPreview() {
-	val categoryID = 1
-	CategoryScreen(categoryID = categoryID)
+
 }

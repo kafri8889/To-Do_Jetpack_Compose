@@ -35,6 +35,13 @@ class DatabaseUtil @Inject constructor(applicationDatabase: ApplicationDatabase)
 		}.invokeOnCompletion { postAction { action(todoList) } }
 	}
 	
+	fun todoSize(action: (Int) -> Unit) {
+		var size = 0
+		scope.launch {
+			size = databaseDao.todoCount()
+		}.invokeOnCompletion { postAction { action(size) } }
+	}
+	
 	fun todoSizeByCategoryID(categoryID: Int, action: (Int) -> Unit) {
 		var todoSize = 0
 		scope.launch {
@@ -89,6 +96,13 @@ class DatabaseUtil @Inject constructor(applicationDatabase: ApplicationDatabase)
 		}.invokeOnCompletion { postAction {
 			action(todoList)
 		} }
+	}
+	
+	fun getCategory(id: Int, action: (Category) -> Unit) {
+		var category: Category? = null
+		scope.launch {
+			category = databaseDao.getCategory(id)
+		}.invokeOnCompletion { postAction { action(category!!) } }
 	}
 	
 	fun categorySize(action: (Int) -> Unit) {

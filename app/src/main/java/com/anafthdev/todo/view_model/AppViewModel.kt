@@ -26,7 +26,23 @@ class AppViewModel @Inject constructor(
 		_todoList.value = todo
 	}
 	
+	fun insertTodo(todo: Todo) = databaseUtil.insertTodo(todo) {
+		getAllTodo()
+	}
+	
 	fun getAllCategory() = databaseUtil.getAllCategory { categories ->
 		_categoryList.value = categories
+	}
+	
+	fun insertCategory(category: Category) = databaseUtil.insertCategory(category) {
+		getAllCategory()
+	}
+	
+	fun updateCategory(category: Category) = databaseUtil.updateCategory(category) {
+		getAllCategory()
+	}
+	
+	fun deleteCategory(category: Category) = databaseUtil.deleteCategory(category) {
+		getAllCategory()
 	}
 }

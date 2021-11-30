@@ -12,7 +12,7 @@ object NavigationDestination {
 	
 	const val Category_3 = "Category 3"
 	
-	const val CategoriesScreen = "Category"
+	const val CategoriesScreen = "Categories"
 	
 	const val CompleteScreen = "Complete"
 }

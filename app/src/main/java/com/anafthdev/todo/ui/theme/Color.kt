@@ -2,7 +2,7 @@ package com.anafthdev.todo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val text_color = Color(0xFF808080)
+val gray = Color(0xFF808080)
 val white = Color(0xFFFFFFFF)
 val pure_black = Color(0xFF000000)
 val black = Color(0xFF222222)

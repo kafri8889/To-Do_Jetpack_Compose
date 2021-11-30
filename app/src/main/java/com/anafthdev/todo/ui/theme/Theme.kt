@@ -77,6 +77,7 @@ fun TODOTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable (
 	
 	MaterialTheme(
 		typography = Typography,
+		shapes = shapes,
 		colors = colors
 	) {
 		content()

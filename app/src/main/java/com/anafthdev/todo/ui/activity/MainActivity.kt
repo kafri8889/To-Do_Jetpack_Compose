@@ -1,6 +1,8 @@
 package com.anafthdev.todo.ui.activity
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -165,6 +167,24 @@ class MainActivity : ComponentActivity() {
 								}
 								
 								todoSize
+							},
+							onEditAsDrawerItem = {
+								scope.launch {
+									scaffoldState.drawerState.close()
+								}
+								
+								val route = "${NavigationDestination.CategoriesScreen}/${categoryList[index].id}"
+								Timber.i(route)
+								navigationController.navigate(route) {
+									navigationController.graph.startDestinationRoute?.let { destination ->
+										popUpTo(destination) {
+											saveState = false
+										}
+										
+										launchSingleTop = true
+										restoreState = false
+									}
+								}
 							}
 						) {
 							currentCategoryRoute = destination
@@ -172,8 +192,7 @@ class MainActivity : ComponentActivity() {
 								scaffoldState.drawerState.close()
 							}
 							
-							val route =
-								"${NavigationDestination.CategoryScreen}/${categoryList[index].id}"
+							val route = "${NavigationDestination.CategoryScreen}/${categoryList[index].id}"
 							navigationController.navigate(route) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
@@ -195,7 +214,14 @@ class MainActivity : ComponentActivity() {
 									iconRes = null,
 									iconVector = Icons.Default.Check
 								),
-								todoCount = 0,
+								todoCount = run {
+									var size = 0
+									viewModel.databaseUtil.todoSize { mSize ->
+										size = mSize
+									}
+									
+									size
+								},
 								isSelected = currentRoute == NavigationDestination.CompleteScreen
 							) {
 								currentCategoryRoute = ""
@@ -206,11 +232,11 @@ class MainActivity : ComponentActivity() {
 								navigationController.navigate(NavigationDestination.CompleteScreen) {
 									navigationController.graph.startDestinationRoute?.let { destination ->
 										popUpTo(destination) {
-											saveState = true
+											saveState = false
 										}
 										
 										launchSingleTop = true
-										restoreState = true
+										restoreState = false
 									}
 								}
 							}
@@ -230,7 +256,8 @@ class MainActivity : ComponentActivity() {
 									scaffoldState.drawerState.close()
 								}
 								
-								navigationController.navigate(NavigationDestination.CategoriesScreen) {
+								val route = "${NavigationDestination.CategoriesScreen}/${-1}"
+								navigationController.navigate(route) {
 									navigationController.graph.startDestinationRoute?.let { destination ->
 										popUpTo(destination) {
 											saveState = true
@@ -260,8 +287,19 @@ class MainActivity : ComponentActivity() {
 					CompleteScreen(viewModel)
 				}
 				
-				composable(NavigationDestination.CategoriesScreen) {
-					CategoriesScreen(viewModel)
+				composable(
+					route = "${NavigationDestination.CategoriesScreen}/{categoryID}",
+					arguments = listOf(
+						navArgument("categoryID") {
+							type = NavType.IntType
+						}
+					)
+				) { entry ->
+					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
+					CategoriesScreen(
+						viewModel = viewModel,
+						cID = categoryID
+					)
 				}
 				
 				composable(
@@ -274,6 +312,7 @@ class MainActivity : ComponentActivity() {
 				) { entry ->
 					val categoryID = entry.arguments?.getInt("categoryID") ?: 0
 					CategoryScreen(
+						viewModel = viewModel,
 						categoryID = categoryID
 					)
 				}
@@ -348,7 +387,7 @@ class MainActivity : ComponentActivity() {
 						CategoryItem(
 							category = category,
 							todoCount = 0,
-							isSelected = i ==0
+							isSelected = i == 0
 						) {}
 					}
 					

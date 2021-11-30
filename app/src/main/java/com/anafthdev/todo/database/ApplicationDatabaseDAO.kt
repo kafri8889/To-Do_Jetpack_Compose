@@ -13,6 +13,9 @@ interface ApplicationDatabaseDAO {
 	@Query("SELECT * FROM todo_table WHERE categoryID LIKE :mCategoryID")
 	suspend fun getTodoByCategoryID(mCategoryID: Int): List<Todo>
 	
+	@Query("SELECT count(id) FROM todo_table")
+	suspend fun todoCount(): Int
+	
 	@Query("SELECT count(id) FROM todo_table WHERE categoryID LIKE :mCategoryID")
 	suspend fun todoSizeByCategoryID(mCategoryID: Int): Int
 	
@@ -41,6 +44,9 @@ interface ApplicationDatabaseDAO {
 	
 	@Query("SELECT * FROM category_table")
 	suspend fun getAllCategory(): List<Category>
+	
+	@Query("SELECT * FROM category_table WHERE id LIKE :mCategoryID")
+	suspend fun getCategory(mCategoryID: Int): Category
 	
 	@Query("SELECT count(id) FROM category_table")
 	suspend fun categorySize(): Int
