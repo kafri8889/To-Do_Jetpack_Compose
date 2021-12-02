@@ -1,12 +1,14 @@
 package com.anafthdev.todo.ui
 
-import android.os.Handler
-import android.os.Looper
+import android.app.DatePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,13 +16,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -29,27 +29,33 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.ExperimentalUnitApi
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import com.anafthdev.todo.R
+import com.anafthdev.todo.common.AppRepository
+import com.anafthdev.todo.common.AppViewModel
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.DrawerMenu
+import com.anafthdev.todo.model.Todo
 import com.anafthdev.todo.ui.theme.*
 import com.google.accompanist.flowlayout.FlowMainAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
-import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalUnitApi::class)
 @Composable
@@ -299,11 +305,11 @@ fun CategoryItem(
 						for ((i, s) in menuLabels.withIndex()) {
 							DropdownMenuItem(
 								onClick = {
+									expandMenu = false
 									when (i) {
 										0 -> if (asDrawerItem) onEditAsDrawerItem() else onEdit()
 										1 -> onDelete()
 									}
-									expandMenu = false
 								},
 							) {
 								Icon(
@@ -391,6 +397,315 @@ fun CategoryDrawerItemPreview() {
 			isSelected = false
 		) {}
 	}
+}
+
+
+
+
+
+@Composable
+fun TodoItem(
+	todo: Todo,
+	isTodoComplete: Boolean,
+	viewModel: AppViewModel,
+	onCheckboxValueChange: (Boolean) -> Unit,
+	onClick: () -> Unit
+) {
+	
+	var category by remember { mutableStateOf(Category.default) }
+	viewModel.appRepository.getCategory(todo.categoryID) { mCategory ->
+		category = mCategory
+	}
+	
+	Card(
+		elevation = 0.dp,
+		shape = RoundedCornerShape(8.dp),
+		backgroundColor = Color.Transparent,
+		modifier = Modifier
+			.fillMaxWidth()
+			.height(48.dp)
+			.clip(RoundedCornerShape(8.dp))
+			.clickable(
+				indication = rememberRipple(color = black.copy(alpha = 0.8f)),
+				interactionSource = remember { MutableInteractionSource() }
+			) { onClick() }
+	) {
+		Row(
+			verticalAlignment = Alignment.CenterVertically
+		) {
+			
+			Checkbox(
+				checked = isTodoComplete,
+				onCheckedChange = onCheckboxValueChange,
+				modifier = Modifier
+					.weight(0.1f)
+			)
+			
+			Text(
+				text = todo.title,
+				color = black.copy(alpha = 0.8f),
+				textDecoration = if (isTodoComplete) TextDecoration.LineThrough else TextDecoration.None,
+				modifier = Modifier
+					.weight(0.8f)
+					.padding(start = 8.dp, end = 8.dp)
+			)
+			
+			Icon(
+				painter = painterResource(id = R.drawable.ic_rect),
+				contentDescription = null,
+				tint = Color(category.color),
+				modifier = Modifier
+					.weight(0.1f)
+					.size(16.dp)
+			)
+		}
+	}
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TodoItemPreview() {
+	Column {
+		TodoItem(
+			todo = Todo(
+				title = "New Todo",
+				content = "Todo Content",
+				date = System.currentTimeMillis(),
+				dateCreated = System.currentTimeMillis(),
+				checkboxes = emptyList(),
+				categoryID = Category.default.id
+			),
+			isTodoComplete = false,
+			viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+			onCheckboxValueChange = {},
+			onClick = {}
+		)
+		
+		TodoItem(
+			todo = Todo(
+				title = "New Todo",
+				content = "Todo Content",
+				date = System.currentTimeMillis(),
+				dateCreated = System.currentTimeMillis(),
+				checkboxes = emptyList(),
+				categoryID = Category.default.id
+			),
+			isTodoComplete = true,
+			viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+			onCheckboxValueChange = {},
+			onClick = {}
+		)
+	}
+}
+
+
+
+
+
+@OptIn(ExperimentalUnitApi::class)
+@Composable
+fun TodoItemInput(
+	todoName: String,
+	textFieldFocusRequester: FocusRequester,
+	viewModel: AppViewModel,
+	onValueChange: (String) -> Unit,
+	onDone: (String, Long, Int) -> Unit,
+	category: Category? = null
+) {
+	val context = LocalContext.current
+	
+	var currentCategory by remember { mutableStateOf(Category.default) }
+	val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
+	
+	// if the value is 0, it means the date has not been set
+	var selectedDate by remember { mutableStateOf(0L) }
+	var showPopupDate by remember { mutableStateOf(false) }
+	
+	Row(
+		verticalAlignment = Alignment.CenterVertically,
+		modifier = Modifier.fillMaxWidth()
+	) {
+		
+		
+		
+		// Text Field
+		OutlinedTextField(
+			value = todoName,
+			onValueChange = onValueChange,
+			maxLines = 4,
+			keyboardOptions = KeyboardOptions(
+				imeAction = ImeAction.Done
+			),
+			keyboardActions = KeyboardActions(
+				onDone = {
+					onDone(
+						todoName,
+						selectedDate,
+						category?.id ?: currentCategory.id
+					)
+				}
+			),
+			textStyle = TextStyle(
+				color = black.copy(alpha = 0.8f)
+			),
+			colors = TextFieldDefaults.outlinedTextFieldColors(
+				focusedBorderColor = Color.Transparent,
+				unfocusedBorderColor = Color.Transparent
+			),
+			placeholder = {
+				Text(
+					text = "Write a new ToDo",
+					color = gray
+				)
+			},
+			modifier = Modifier
+				.weight(2f)
+				.focusRequester(textFieldFocusRequester)
+		)
+		
+		
+		
+		// Date
+		IconButton(
+			onClick = {
+				if (selectedDate == 0L) {
+					val calendar = Calendar.getInstance()
+					val listener = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
+						calendar[Calendar.DAY_OF_MONTH] = dayOfMonth
+						calendar[Calendar.MONTH] = month
+						calendar[Calendar.YEAR] = year
+					
+						selectedDate = calendar.timeInMillis
+					}
+				
+					DatePickerDialog(
+						context,
+						listener,
+						calendar[Calendar.YEAR],
+						calendar[Calendar.MONTH],
+						calendar[Calendar.DAY_OF_MONTH]
+					).show()
+				} else {
+					showPopupDate = true
+				}
+			},
+			modifier = Modifier
+				.size(32.dp)
+				.background(
+					gray.copy(alpha = 0.12f),
+					shape = RoundedCornerShape(8.dp)
+				)
+				.weight(0.4f, false)
+		) {
+			Icon(
+				imageVector = Icons.Default.DateRange,
+				tint = black.copy(alpha = 0.8f),
+				contentDescription = null,
+				modifier = Modifier
+					.size(18.dp)
+			)
+			
+			if (showPopupDate) {
+				Popup(
+					alignment = Alignment.TopCenter,
+					onDismissRequest = {
+						showPopupDate = false
+					}
+				) {
+					Card(
+						elevation = 4.dp
+					) {
+						Column(
+							horizontalAlignment = Alignment.CenterHorizontally,
+							modifier = Modifier
+								.background(surface_light)
+								.padding(16.dp)
+						) {
+							Text(
+								text = if (selectedDate == 0L) "-/-/-" else SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(selectedDate),
+								color = black.copy(alpha = 0.8f),
+								fontWeight = FontWeight.SemiBold
+							)
+							
+							
+							
+							OutlinedButton(
+								onClick = {
+									selectedDate = 0L
+									showPopupDate = false
+								},
+								modifier = Modifier
+									.padding(top = 8.dp)
+							) {
+								Text("Change Date")
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		
+		
+		// Category
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.Center,
+			modifier = Modifier
+				.size(36.dp)
+				.weight(0.9f)
+				.padding(start = 4.dp)
+				.background(
+					gray.copy(alpha = 0.12f),
+					shape = RoundedCornerShape(8.dp)
+				)
+		) {
+			Icon(
+				painter = painterResource(id = R.drawable.ic_rect),
+				contentDescription = null,
+				tint = Color(category?.color ?: currentCategory.color),
+				modifier = Modifier
+					.size(22.dp)
+					.padding(4.dp)
+			)
+			
+			
+			
+			Text(
+				text = category?.name ?: currentCategory.name,
+				fontSize = TextUnit(12f, TextUnitType.Sp),
+				color = black.copy(alpha = 0.8f),
+				overflow = TextOverflow.Ellipsis,
+				modifier = Modifier
+					.padding(start = 2.dp, end = 2.dp)
+			)
+			
+			
+			
+			if (category == null) {
+				Icon(
+					imageVector = Icons.Default.KeyboardArrowDown,
+					contentDescription = null,
+					tint = black.copy(alpha = 0.8f),
+					modifier = Modifier
+						.size(28.dp)
+						.padding(start = 4.dp, end = 4.dp, top = 4.dp)
+				)
+			}
+		}
+	}
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TodoItemInputPreview() {
+	TodoItemInput(
+		todoName = "",
+		viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+		textFieldFocusRequester = FocusRequester(),
+		onDone = { s, l, i -> },
+		onValueChange = {},
+	)
 }
 
 
@@ -532,7 +847,7 @@ fun CategoryItemInput(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun CategoryItemInputPreview() {
 	Column(

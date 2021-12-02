@@ -1,17 +1,15 @@
 package com.anafthdev.todo.ui.activity
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
@@ -36,14 +34,15 @@ import com.anafthdev.todo.model.DrawerMenu
 import com.anafthdev.todo.ui.*
 import com.anafthdev.todo.ui.theme.*
 import com.anafthdev.todo.utils.DatabaseUtil
-import com.anafthdev.todo.view_model.AppViewModel
+import com.anafthdev.todo.common.AppViewModel
+import com.anafthdev.todo.utils.AppUtil.toast
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
 class MainActivity : ComponentActivity() {
 	
-	@Inject lateinit var databaseUtil: DatabaseUtil
+	@Inject lateinit var appRepository: DatabaseUtil
 	@Inject lateinit var viewModel: AppViewModel
 	
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,11 +54,12 @@ class MainActivity : ComponentActivity() {
 			}
 		})
 		
-		databaseUtil.categorySize { size ->
-			if (size == 0) databaseUtil.insertCategory(
+		appRepository.categorySize { size ->
+			if (size == 0) appRepository.insertCategory(
 				Category(
-					"Any",
-					CategoryColor.values[0]
+					id = 1,
+					name = "Any",
+					color = CategoryColor.values[0]
 				)
 			)
 		}
@@ -94,7 +94,13 @@ class MainActivity : ComponentActivity() {
 					backgroundColor = primary_container_light,
 					title = {
 						Text(
-							text = "Todo",
+							text = when (currentRoute) {
+								NavigationDestination.DashboardScreen -> NavigationDestination.DashboardScreen
+								NavigationDestination.CompleteScreen -> NavigationDestination.CompleteScreen
+								"${NavigationDestination.CategoryScreen}/{categoryID}" -> NavigationDestination.CategoryScreen
+								"${NavigationDestination.CategoriesScreen}/{categoryID}" -> NavigationDestination.CategoriesScreen
+								else -> NavigationDestination.DashboardScreen
+							},
 							color = black
 						)
 					},
@@ -116,10 +122,10 @@ class MainActivity : ComponentActivity() {
 				)
 			},
 			drawerBackgroundColor = surface_light,
+			drawerShape = RoundedCornerShape(0),
 			drawerContent = {
 				LazyColumn(
-					modifier = Modifier
-						.padding(top = 16.dp)
+					modifier = Modifier.padding(top = 16.dp)
 				) {
 					item {
 						DrawerItem(
@@ -129,14 +135,14 @@ class MainActivity : ComponentActivity() {
 								iconVector = null
 							),
 							todoCount = todoList.size,
-							isSelected = currentRoute == NavigationDestination.DashboardCategory
+							isSelected = currentRoute == NavigationDestination.DashboardScreen
 						) {
 							currentCategoryRoute = ""
 							scope.launch {
 								scaffoldState.drawerState.close()
 							}
 							
-							navigationController.navigate(NavigationDestination.DashboardCategory) {
+							navigationController.navigate(NavigationDestination.DashboardScreen) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
 										saveState = true
@@ -148,6 +154,8 @@ class MainActivity : ComponentActivity() {
 							}
 						}
 					}
+					
+					
 					
 					items(if (categoryList.size >= 3) 3 else categoryList.size) { index ->
 						val destination = when (index) {
@@ -162,7 +170,7 @@ class MainActivity : ComponentActivity() {
 							isSelected = (currentRoute == destination) or (currentCategoryRoute == destination),
 							todoCount = run {
 								var todoSize = 0
-								databaseUtil.todoSizeByCategoryID(categoryList[index].id) { mTodoSize ->
+								appRepository.todoSizeByCategoryID(categoryList[index].id) { mTodoSize ->
 									todoSize = mTodoSize
 								}
 								
@@ -174,7 +182,6 @@ class MainActivity : ComponentActivity() {
 								}
 								
 								val route = "${NavigationDestination.CategoriesScreen}/${categoryList[index].id}"
-								Timber.i(route)
 								navigationController.navigate(route) {
 									navigationController.graph.startDestinationRoute?.let { destination ->
 										popUpTo(destination) {
@@ -196,15 +203,17 @@ class MainActivity : ComponentActivity() {
 							navigationController.navigate(route) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
-										saveState = true
+										saveState = false
 									}
 									
 									launchSingleTop = true
-									restoreState = true
+									restoreState = false
 								}
 							}
 						}
 					}
+					
+					
 					
 					item {
 						Column {
@@ -216,7 +225,7 @@ class MainActivity : ComponentActivity() {
 								),
 								todoCount = run {
 									var size = 0
-									viewModel.databaseUtil.todoSize { mSize ->
+									viewModel.appRepository.todoSize { mSize ->
 										size = mSize
 									}
 									
@@ -240,6 +249,8 @@ class MainActivity : ComponentActivity() {
 									}
 								}
 							}
+							
+							
 							
 							DrawerItem(
 								drawerMenu = DrawerMenu(
@@ -268,6 +279,9 @@ class MainActivity : ComponentActivity() {
 									}
 								}
 							}
+							
+							
+							
 						}
 					}
 					
@@ -277,9 +291,9 @@ class MainActivity : ComponentActivity() {
 			
 			NavHost(
 				navController = navigationController,
-				startDestination = NavigationDestination.DashboardCategory,
+				startDestination = NavigationDestination.DashboardScreen,
 			) {
-				composable(NavigationDestination.DashboardCategory) {
+				composable(NavigationDestination.DashboardScreen) {
 					DashboardScreen(viewModel)
 				}
 				
@@ -298,6 +312,7 @@ class MainActivity : ComponentActivity() {
 					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
 					CategoriesScreen(
 						viewModel = viewModel,
+						navController = navigationController,
 						cID = categoryID
 					)
 				}
@@ -310,11 +325,31 @@ class MainActivity : ComponentActivity() {
 						}
 					)
 				) { entry ->
-					val categoryID = entry.arguments?.getInt("categoryID") ?: 0
-					CategoryScreen(
-						viewModel = viewModel,
-						categoryID = categoryID
+					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
+					if (categoryID != -1) {
+						CategoryScreen(
+							viewModel = viewModel,
+							navController = navigationController,
+							categoryID = categoryID
+						)
+					} else "Category not found".toast(this@MainActivity)
+				}
+				
+				composable(
+					route = "${NavigationDestination.EditTodoScreen}/{todoID}",
+					arguments = listOf(
+						navArgument("todoID") {
+							type = NavType.IntType
+						}
 					)
+				) { entry ->
+					val todoID = entry.arguments?.getInt("todoID") ?: -1
+					if (todoID != -1) {
+						EditTodoScreen(
+							todoID = todoID,
+							viewModel = viewModel,
+						)
+					} else "Todo not found".toast(this@MainActivity)
 				}
 				
 			}

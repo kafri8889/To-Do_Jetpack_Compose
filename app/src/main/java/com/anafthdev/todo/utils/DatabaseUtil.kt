@@ -49,37 +49,37 @@ class DatabaseUtil @Inject constructor(applicationDatabase: ApplicationDatabase)
 		}.invokeOnCompletion { postAction { action(todoSize) } }
 	}
 	
-	fun updateTodo(todo: Todo, action: () -> Unit= {}) {
+	fun updateTodo(todo: Todo, action: () -> Unit = {}) {
 		scope.launch { databaseDao.updateTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun updateTodo(todo: List<Todo>, action: () -> Unit= {}) {
+	fun updateTodo(todo: List<Todo>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.updateTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun deleteTodo(todo: Todo, action: () -> Unit= {}) {
+	fun deleteTodo(todo: Todo, action: () -> Unit = {}) {
 		scope.launch { databaseDao.deleteTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun deleteTodo(todo: List<Todo>, action: () -> Unit= {}) {
+	fun deleteTodo(todo: List<Todo>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.deleteTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun insertTodo(todo: Todo, action: () -> Unit= {}) {
+	fun insertTodo(todo: Todo, action: () -> Unit = {}) {
 		scope.launch { databaseDao.insertTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun insertTodo(todo: List<Todo>, action: () -> Unit= {}) {
+	fun insertTodo(todo: List<Todo>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.insertTodo(todo) }.invokeOnCompletion {
 			postAction { action() }
 		}
@@ -112,37 +112,37 @@ class DatabaseUtil @Inject constructor(applicationDatabase: ApplicationDatabase)
 		}.invokeOnCompletion { postAction { action(size) } }
 	}
 	
-	fun updateCategory(category: Category, action: () -> Unit= {}) {
+	fun updateCategory(category: Category, action: () -> Unit = {}) {
 		scope.launch { databaseDao.updateCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun updateCategory(category: List<Category>, action: () -> Unit= {}) {
+	fun updateCategory(category: List<Category>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.updateCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun deleteCategory(category: Category, action: () -> Unit= {}) {
+	fun deleteCategory(category: Category, action: () -> Unit = {}) {
 		scope.launch { databaseDao.deleteCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun deleteCategory(category: List<Category>, action: () -> Unit= {}) {
+	fun deleteCategory(category: List<Category>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.deleteCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun insertCategory(category: Category, action: () -> Unit= {}) {
+	fun insertCategory(category: Category, action: () -> Unit = {}) {
 		scope.launch { databaseDao.insertCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}
 	}
 	
-	fun insertCategory(category: List<Category>, action: () -> Unit= {}) {
+	fun insertCategory(category: List<Category>, action: () -> Unit = {}) {
 		scope.launch { databaseDao.insertCategory(category) }.invokeOnCompletion {
 			postAction { action() }
 		}

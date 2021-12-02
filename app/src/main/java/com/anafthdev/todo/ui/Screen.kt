@@ -1,30 +1,31 @@
 package com.anafthdev.todo.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.TweenSpec
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalTextInputService
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.model.Category
-import com.anafthdev.todo.utils.AppUtil.toast
+import com.anafthdev.todo.ui.theme.on_surface_light
 import com.anafthdev.todo.utils.ComposeUtil
-import com.anafthdev.todo.view_model.AppViewModel
-import timber.log.Timber
+import com.anafthdev.todo.common.AppViewModel
+import com.anafthdev.todo.data.NavigationDestination
+import com.anafthdev.todo.model.Todo
 
 @Composable
 fun DashboardScreen(viewModel: AppViewModel) {
@@ -51,6 +52,7 @@ fun CompleteScreen(viewModel: AppViewModel) {
 @Composable
 fun CategoriesScreen(
 	viewModel: AppViewModel,
+	navController: NavHostController,
 	cID: Int? = null
 ) {
 	val focusManager = LocalFocusManager.current
@@ -73,11 +75,11 @@ fun CategoriesScreen(
 	
 	// clear textField focus when keyboard closed
 	if (keyboardState == ComposeUtil.Keyboard.Closed) {
-		focusManager.clearFocus(true)
+		focusManager.clearFocus(force = true)
 	}
 	
 	if ((cID != null) and (cID != -1) and !hasNavigate) {
-		viewModel.databaseUtil.getCategory(cID!!) { category ->
+		viewModel.appRepository.getCategory(cID!!) { category ->
 			categoryName = category.name
 			selectedColor = category.color
 			categoryID = category.id
@@ -116,7 +118,7 @@ fun CategoriesScreen(
 					showMenu = true,
 					todoCount = run {
 						var todoSize = 0
-						viewModel.databaseUtil.todoSizeByCategoryID(category.id) { size ->
+						viewModel.appRepository.todoSizeByCategoryID(category.id) { size ->
 							todoSize = size
 						}
 						
@@ -131,7 +133,21 @@ fun CategoriesScreen(
 					onDelete = {
 						viewModel.deleteCategory(category)
 					}
-				) { keyboardController?.hide() }
+				) {
+					keyboardController?.hide()
+					
+					val route = "${NavigationDestination.CategoryScreen}/${category.id}"
+					navController.navigate(route) {
+						navController.graph.startDestinationRoute?.let { destination ->
+							popUpTo(destination) {
+								saveState = false
+							}
+							
+							launchSingleTop = true
+							restoreState = false
+						}
+					}
+				}
 			}
 		}
 	}
@@ -141,10 +157,105 @@ fun CategoriesScreen(
 
 
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CategoryScreen(
 	viewModel: AppViewModel,
+	navController: NavHostController,
 	categoryID: Int
+) {
+	viewModel.getTodoListByID(categoryID)
+	
+	val focusManager = LocalFocusManager.current
+	val keyboardController = LocalSoftwareKeyboardController.current
+	
+	val todoList by viewModel.todoListByID.observeAsState(initial = emptyList())
+	val keyboardState by ComposeUtil.keyboardAsState()
+	
+	var todoName by remember { mutableStateOf("") }
+	var category by remember { mutableStateOf(Category.default) }
+	val textFieldFocusRequester = remember { FocusRequester() }
+	var hasNavigate by remember { mutableStateOf(false) }
+	
+	// clear textField focus when keyboard closed
+	if (keyboardState == ComposeUtil.Keyboard.Closed) {
+		focusManager.clearFocus(force = true)
+	}
+	
+	if (!hasNavigate) {
+		viewModel.appRepository.getCategory(categoryID) { mCategory ->
+			category = mCategory
+		}
+		
+		true.also { hasNavigate = it }
+	}
+	
+	Column {
+		TodoItemInput(
+			todoName = todoName,
+			viewModel = viewModel,
+			category = category,
+			textFieldFocusRequester = textFieldFocusRequester,
+			onValueChange = { name ->
+				todoName = name
+			},
+			onDone = { title, timeInMillis, categoryID ->
+				// Save To-Do
+				if (title.isNotBlank()) {
+					viewModel.insertTodo(Todo(
+						title = title,
+						content = "",
+						date = timeInMillis,
+						dateCreated = System.currentTimeMillis(),
+						categoryID = categoryID,
+						checkboxes = emptyList()
+					))
+					
+					todoName = ""
+				}
+				
+				keyboardController?.hide()
+			}
+		)
+		
+		LazyColumn {
+			items(todoList) { todo ->
+				var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
+				TodoItem(
+					todo = todo,
+					viewModel = viewModel,
+					isTodoComplete = isTodoComplete,
+					onClick = {
+						val route = "${NavigationDestination.EditTodoScreen}/${todo.id}"
+						navController.navigate(route) {
+							navController.graph.startDestinationRoute?.let { destination ->
+								popUpTo(destination) {
+									saveState = false
+								}
+								
+								launchSingleTop = true
+								restoreState = false
+							}
+						}
+					},
+					onCheckboxValueChange = { mIsTodoComplete ->
+						isTodoComplete = mIsTodoComplete
+						todo.isComplete = mIsTodoComplete
+						viewModel.appRepository.updateTodo(todo) {
+							viewModel.getTodoListByID(categoryID)
+						}
+					}
+				)
+			}
+		}
+	}
+}
+
+
+@Composable
+fun EditTodoScreen(
+	todoID: Int,
+	viewModel: AppViewModel
 ) {
 
 }

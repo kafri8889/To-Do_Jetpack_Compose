@@ -2,7 +2,7 @@ package com.anafthdev.todo.data
 
 object NavigationDestination {
 	
-	const val DashboardCategory = "Dashboard"
+	const val DashboardScreen = "Dashboard"
 	
 	const val CategoryScreen = "Category"
 	
@@ -15,4 +15,6 @@ object NavigationDestination {
 	const val CategoriesScreen = "Categories"
 	
 	const val CompleteScreen = "Complete"
+	
+	const val EditTodoScreen = "Edit Todo"
 }
