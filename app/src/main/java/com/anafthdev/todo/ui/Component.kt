@@ -2,9 +2,7 @@ package com.anafthdev.todo.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -171,7 +170,7 @@ fun DrawerItem(
 	}
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun DrawerMenuPreview() {
 	val drawerMenu = DrawerMenu(
@@ -193,6 +192,67 @@ fun DrawerMenuPreview() {
 			isSelected = false
 		) {}
 	}
+}
+
+
+
+
+
+@OptIn(ExperimentalUnitApi::class)
+@Composable
+fun SelectCategoryItem(
+	category: Category,
+	onClick: () -> Unit
+) {
+	Card(
+		elevation = 0.dp,
+		shape = RoundedCornerShape(8.dp),
+		backgroundColor = Color.Transparent,
+		modifier = Modifier
+			.fillMaxWidth()
+			.height(48.dp)
+			.clip(RoundedCornerShape(8.dp))
+			.clickable(
+				indication = rememberRipple(color = black.copy(alpha = 0.8f)),
+				interactionSource = remember { MutableInteractionSource() }
+			) { onClick() }
+	) {
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			modifier = Modifier
+				.fillMaxWidth()
+		) {
+			
+			Icon(
+				painter = painterResource(id = R.drawable.ic_rect),
+				contentDescription = null,
+				tint = Color(category.color),
+				modifier = Modifier
+					.size(18.dp)
+					.padding(start = 8.dp)
+					.weight(0.2f)
+			)
+			
+			Text(
+				text = category.name,
+				color = black.copy(alpha = 0.8f),
+				fontSize = TextUnit(16f, TextUnitType.Sp),
+				fontWeight = FontWeight.SemiBold,
+				modifier = Modifier
+					.padding(8.dp)
+					.weight(1f),
+			)
+		}
+	}
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SelectCategoryItemPreview() {
+	SelectCategoryItem(
+		category = Category.default,
+		onClick = {}
+	)
 }
 
 
@@ -373,7 +433,7 @@ fun CategoryItem(
 
 @Preview(showBackground = true)
 @Composable
-fun CategoryDrawerItemPreview() {
+fun CategoryItemPreview() {
 	val categoryHealth = Category(
 		"Health",
 		0xFF904D00
@@ -508,18 +568,26 @@ fun TodoItemInput(
 	todoName: String,
 	textFieldFocusRequester: FocusRequester,
 	viewModel: AppViewModel,
+	rotationAngleArrowIcon: Float = 0f,
+	categoryID: Int? = null,
+	category: Category? = null,
+	onClick: () -> Unit = {},
 	onValueChange: (String) -> Unit,
 	onDone: (String, Long, Int) -> Unit,
-	category: Category? = null
 ) {
 	val context = LocalContext.current
 	
 	var currentCategory by remember { mutableStateOf(Category.default) }
-	val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
 	
 	// if the value is 0, it means the date has not been set
 	var selectedDate by remember { mutableStateOf(0L) }
 	var showPopupDate by remember { mutableStateOf(false) }
+	
+	if (categoryID != null) {
+		viewModel.appRepository.getCategory(categoryID) { category ->
+			currentCategory = category
+		}
+	}
 	
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
@@ -659,6 +727,13 @@ fun TodoItemInput(
 					gray.copy(alpha = 0.12f),
 					shape = RoundedCornerShape(8.dp)
 				)
+				.then(
+					if (category == null) {
+						Modifier.clickable {
+							onClick()
+						}
+					} else Modifier
+				)
 		) {
 			Icon(
 				painter = painterResource(id = R.drawable.ic_rect),
@@ -673,6 +748,7 @@ fun TodoItemInput(
 			
 			Text(
 				text = category?.name ?: currentCategory.name,
+				textAlign = TextAlign.Center,
 				fontSize = TextUnit(12f, TextUnitType.Sp),
 				color = black.copy(alpha = 0.8f),
 				overflow = TextOverflow.Ellipsis,
@@ -683,6 +759,11 @@ fun TodoItemInput(
 			
 			
 			if (category == null) {
+				val rotationAngle by animateFloatAsState(
+					targetValue = rotationAngleArrowIcon,
+					animationSpec = tween(400)
+				)
+				
 				Icon(
 					imageVector = Icons.Default.KeyboardArrowDown,
 					contentDescription = null,
@@ -690,6 +771,7 @@ fun TodoItemInput(
 					modifier = Modifier
 						.size(28.dp)
 						.padding(start = 4.dp, end = 4.dp, top = 4.dp)
+						.rotate(rotationAngle)
 				)
 			}
 		}
@@ -740,7 +822,11 @@ fun CategoryItemInput(
 					color = black.copy(alpha = 0.8f)
 				),
 				onValueChange = { s ->
-					onValueChange(s, color)
+					onValueChange(
+						// Max length 20
+						if (s.length > 20) s.substring(0, 20) else s,
+						color
+					)
 				},
 				label = {
 					Text("Category Name")

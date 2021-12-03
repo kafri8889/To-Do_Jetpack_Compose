@@ -1,19 +1,22 @@
 package com.anafthdev.todo.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -26,10 +29,120 @@ import com.anafthdev.todo.utils.ComposeUtil
 import com.anafthdev.todo.common.AppViewModel
 import com.anafthdev.todo.data.NavigationDestination
 import com.anafthdev.todo.model.Todo
+import com.anafthdev.todo.ui.theme.surface_light
+import com.anafthdev.todo.utils.AppUtil.toast
+import kotlinx.coroutines.launch
 
+@OptIn(
+	ExperimentalComposeUiApi::class,
+	ExperimentalMaterialApi::class
+)
 @Composable
 fun DashboardScreen(viewModel: AppViewModel) {
-
+	
+	val context = LocalContext.current
+	val keyboardController = LocalSoftwareKeyboardController.current
+	val focusManager = LocalFocusManager.current
+	
+	val keyboardState by ComposeUtil.keyboardAsState()
+	val todoList by viewModel.todoList.observeAsState(initial = emptyList())
+	val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
+	
+	val scope = rememberCoroutineScope()
+	val scaffoldState = rememberBottomSheetScaffoldState(
+		bottomSheetState = rememberBottomSheetState(BottomSheetValue.Collapsed)
+	)
+	
+	var todoName by remember { mutableStateOf("") }
+	var selectedCategoryID by remember { mutableStateOf(Category.default.id) }
+	val textFieldFocusRequester = remember { FocusRequester() }
+	
+	// clear textField focus when keyboard closed
+	if (keyboardState == ComposeUtil.Keyboard.Closed) {
+		focusManager.clearFocus(force = true)
+	}
+	
+	BottomSheetScaffold(
+		scaffoldState = scaffoldState,
+		sheetBackgroundColor = surface_light,
+		sheetPeekHeight = 0.dp,
+		sheetElevation = 8.dp,
+		sheetShape = RoundedCornerShape(24.dp),
+		sheetContent = {
+			LazyColumn(
+				modifier = Modifier
+					.fillMaxWidth()
+					.height(384.dp)
+			) {
+				items(categoryList) { category ->
+					SelectCategoryItem(
+						category = category,
+						onClick = {
+							selectedCategoryID = category.id
+							scope.launch {
+								scaffoldState.bottomSheetState.collapse()
+							}
+						}
+					)
+				}
+			}
+		},
+	) {
+		Column {
+			
+			TodoItemInput(
+				todoName = todoName,
+				categoryID = selectedCategoryID,
+				textFieldFocusRequester = textFieldFocusRequester,
+				viewModel = viewModel,
+				rotationAngleArrowIcon = run {
+					if (scaffoldState.bottomSheetState.isExpanded) 180f
+					else -360f
+				},
+				onValueChange = { name ->
+					todoName = name
+				},
+				onDone = { title, timeInMillis, categoryID ->
+					// Save To-Do
+					if (title.isNotBlank()) {
+						viewModel.insertTodo(Todo(
+							title = title,
+							content = "",
+							date = timeInMillis,
+							dateCreated = System.currentTimeMillis(),
+							categoryID = categoryID,
+							checkboxes = emptyList()
+						))
+						
+						todoName = ""
+					}
+					
+					keyboardController?.hide()
+				},
+				onClick = {
+					if (scaffoldState.bottomSheetState.isExpanded) {
+						scope.launch { scaffoldState.bottomSheetState.collapse() }
+					} else scope.launch { scaffoldState.bottomSheetState.expand() }
+				}
+			)
+			
+			
+			
+			LazyColumn {
+				items(todoList) { todo ->
+					TodoItem(
+						todo = todo,
+						isTodoComplete = todo.isComplete,
+						viewModel = viewModel,
+						onCheckboxValueChange = {},
+						onClick = {
+						
+						}
+					)
+				}
+			}
+		}
+	}
 }
 
 
@@ -70,6 +183,7 @@ fun CategoriesScreen(
 	var selectedColor by remember { mutableStateOf(CategoryColor.values[0]) }
 	var categoryID by remember { mutableStateOf(-1) }
 	
+	val todoList by viewModel.todoList.observeAsState(initial = emptyList())
 	val categories by viewModel.categoryList.observeAsState(initial = emptyList())
 	val keyboardState by ComposeUtil.keyboardAsState()
 	
@@ -116,14 +230,7 @@ fun CategoriesScreen(
 					category = category,
 					asDrawerItem = false,
 					showMenu = true,
-					todoCount = run {
-						var todoSize = 0
-						viewModel.appRepository.todoSizeByCategoryID(category.id) { size ->
-							todoSize = size
-						}
-						
-						todoSize
-					},
+					todoCount = todoList.filter { return@filter it.categoryID == category.id }.size,
 					onEdit = {
 						categoryID = category.id
 						categoryName = category.name

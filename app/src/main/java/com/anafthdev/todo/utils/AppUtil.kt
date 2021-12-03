@@ -1,6 +1,8 @@
 package com.anafthdev.todo.utils
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 
 object AppUtil {
@@ -19,5 +21,7 @@ object AppUtil {
 		return list
 	}
 	
-	fun Any.toast(context: Context, length: Int = Toast.LENGTH_SHORT) = Toast.makeText(context, this.toString(), length).show()
+	fun Any.toast(context: Context, length: Int = Toast.LENGTH_SHORT) = Handler(Looper.getMainLooper()).post {
+		Toast.makeText(context, this.toString(), length).show()
+	}
 }

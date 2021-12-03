@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.anafthdev.todo.BuildConfig
 import com.anafthdev.todo.R
+import com.anafthdev.todo.common.AppViewModel
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.data.NavigationDestination
 import com.anafthdev.todo.di.Application
@@ -33,9 +35,8 @@ import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.DrawerMenu
 import com.anafthdev.todo.ui.*
 import com.anafthdev.todo.ui.theme.*
-import com.anafthdev.todo.utils.DatabaseUtil
-import com.anafthdev.todo.common.AppViewModel
 import com.anafthdev.todo.utils.AppUtil.toast
+import com.anafthdev.todo.utils.DatabaseUtil
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -99,6 +100,7 @@ class MainActivity : ComponentActivity() {
 								NavigationDestination.CompleteScreen -> NavigationDestination.CompleteScreen
 								"${NavigationDestination.CategoryScreen}/{categoryID}" -> NavigationDestination.CategoryScreen
 								"${NavigationDestination.CategoriesScreen}/{categoryID}" -> NavigationDestination.CategoriesScreen
+								"${NavigationDestination.EditTodoScreen}/{todoID}" -> NavigationDestination.EditTodoScreen
 								else -> NavigationDestination.DashboardScreen
 							},
 							color = black
@@ -158,6 +160,7 @@ class MainActivity : ComponentActivity() {
 					
 					
 					items(if (categoryList.size >= 3) 3 else categoryList.size) { index ->
+						val c = LocalContext.current
 						val destination = when (index) {
 							0 -> NavigationDestination.Category_1
 							1 -> NavigationDestination.Category_2
@@ -168,14 +171,7 @@ class MainActivity : ComponentActivity() {
 						CategoryItem(
 							category = categoryList[index],
 							isSelected = (currentRoute == destination) or (currentCategoryRoute == destination),
-							todoCount = run {
-								var todoSize = 0
-								appRepository.todoSizeByCategoryID(categoryList[index].id) { mTodoSize ->
-									todoSize = mTodoSize
-								}
-								
-								todoSize
-							},
+							todoCount = todoList.filter { return@filter it.categoryID == categoryList[index].id }.size,
 							onEditAsDrawerItem = {
 								scope.launch {
 									scaffoldState.drawerState.close()
