@@ -37,6 +37,10 @@ class AppViewModel @Inject constructor(
 //		getAllTodo()
 //	}
 	
+	fun deleteTodoByCategoryID(categoryID: Int) = appRepository.deleteTodoByCategoryID(categoryID) {
+		getAllTodo()
+	}
+	
 	fun insertTodo(todo: Todo) = appRepository.insertTodo(todo) {
 		getAllTodo()
 	}
@@ -63,6 +67,7 @@ class AppViewModel @Inject constructor(
 	}
 	
 	fun deleteCategory(category: Category) = appRepository.deleteCategory(category) {
+		deleteTodoByCategoryID(category.id)
 		getAllCategory()
 	}
 }

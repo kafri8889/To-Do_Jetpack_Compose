@@ -20,16 +20,16 @@ class AppRepository @Inject constructor(
 		databaseUtil.todoSize(action)
 	}
 	
-	override fun todoSizeByCategoryID(categoryID: Int, action: (Int) -> Unit) {
-		databaseUtil.todoSizeByCategoryID(categoryID, action)
-	}
-	
 	override fun updateTodo(todo: Todo, action: () -> Unit) {
 		databaseUtil.updateTodo(todo, action)
 	}
 	
 	override fun updateTodo(todo: List<Todo>, action: () -> Unit) {
 		databaseUtil.updateTodo(todo, action)
+	}
+	
+	override fun deleteTodoByCategoryID(categoryID: Int, action: () -> Unit) {
+		databaseUtil.deleteTodoByCategoryID(categoryID, action)
 	}
 	
 	override fun deleteTodo(todo: Todo, action: () -> Unit) {
@@ -95,11 +95,11 @@ class AppRepository @Inject constructor(
 		
 		override fun todoSize(action: (Int) -> Unit) {}
 		
-		override fun todoSizeByCategoryID(categoryID: Int, action: (Int) -> Unit) {}
-		
 		override fun updateTodo(todo: Todo, action: () -> Unit) {}
 		
 		override fun updateTodo(todo: List<Todo>, action: () -> Unit) {}
+		
+		override fun deleteTodoByCategoryID(categoryID: Int, action: () -> Unit) {}
 		
 		override fun deleteTodo(todo: Todo, action: () -> Unit) {}
 		

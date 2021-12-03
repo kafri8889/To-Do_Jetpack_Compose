@@ -16,20 +16,20 @@ interface ApplicationDatabaseDAO {
 	@Query("SELECT count(id) FROM todo_table")
 	suspend fun todoCount(): Int
 	
-	@Query("SELECT count(id) FROM todo_table WHERE categoryID LIKE :mCategoryID")
-	suspend fun todoSizeByCategoryID(mCategoryID: Int): Int
-	
-	@Update
-	suspend fun updateTodo(todo: Todo)
-	
-	@Update
-	suspend fun updateTodo(todo: List<Todo>)
+	@Query("DELETE FROM todo_table WHERE categoryID LIKE :mCategoryID")
+	suspend fun deleteTodoByCategoryID(mCategoryID: Int)
 	
 	@Delete
 	suspend fun deleteTodo(todo: Todo)
 	
 	@Delete
 	suspend fun deleteTodo(todo: List<Todo>)
+	
+	@Update
+	suspend fun updateTodo(todo: Todo)
+	
+	@Update
+	suspend fun updateTodo(todo: List<Todo>)
 	
 	@Query("DELETE FROM todo_table")
 	suspend fun deleteAllTodo()

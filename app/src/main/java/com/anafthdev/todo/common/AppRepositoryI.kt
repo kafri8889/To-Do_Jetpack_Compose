@@ -11,11 +11,11 @@ interface AppRepositoryI {
 	
 	fun todoSize(action: (Int) -> Unit)
 	
-	fun todoSizeByCategoryID(categoryID: Int, action: (Int) -> Unit)
-	
 	fun updateTodo(todo: Todo, action: () -> Unit = {})
 	
 	fun updateTodo(todo: List<Todo>, action: () -> Unit = {})
+	
+	fun deleteTodoByCategoryID(categoryID: Int, action: () -> Unit)
 	
 	fun deleteTodo(todo: Todo, action: () -> Unit = {})
 	
