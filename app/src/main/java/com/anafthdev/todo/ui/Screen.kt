@@ -130,11 +130,19 @@ fun DashboardScreen(viewModel: AppViewModel) {
 			
 			LazyColumn {
 				items(todoList) { todo ->
+					var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
+					
 					TodoItem(
 						todo = todo,
-						isTodoComplete = todo.isComplete,
+						isTodoComplete = isTodoComplete,
 						viewModel = viewModel,
-						onCheckboxValueChange = {},
+						onCheckboxValueChange = { mIsTodoComplete ->
+							isTodoComplete = mIsTodoComplete
+							todo.isComplete = mIsTodoComplete
+							viewModel.appRepository.updateTodo(todo) {
+								viewModel.getAllTodo()
+							}
+						},
 						onClick = {
 						
 						}
@@ -151,7 +159,31 @@ fun DashboardScreen(viewModel: AppViewModel) {
 
 @Composable
 fun CompleteScreen(viewModel: AppViewModel) {
-
+	val todoList by viewModel.todoList.observeAsState(initial = emptyList())
+	
+	Column {
+		LazyColumn {
+			items(todoList.filter { it.isComplete }) { todo ->
+				var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
+				
+				TodoItem(
+					todo = todo,
+					isTodoComplete = isTodoComplete,
+					viewModel = viewModel,
+					onCheckboxValueChange = { mIsTodoComplete ->
+						isTodoComplete = mIsTodoComplete
+						todo.isComplete = mIsTodoComplete
+						viewModel.appRepository.updateTodo(todo) {
+							viewModel.getAllTodo()
+						}
+					},
+					onClick = {
+					
+					}
+				)
+			}
+		}
+	}
 }
 
 
@@ -328,6 +360,7 @@ fun CategoryScreen(
 		LazyColumn {
 			items(todoList) { todo ->
 				var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
+				
 				TodoItem(
 					todo = todo,
 					viewModel = viewModel,

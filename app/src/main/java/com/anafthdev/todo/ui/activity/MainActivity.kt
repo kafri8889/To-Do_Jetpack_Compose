@@ -79,8 +79,9 @@ class MainActivity : ComponentActivity() {
 		val navigationController = rememberNavController()
 		
 		val navigationBackStackEntry by navigationController.currentBackStackEntryAsState()
-		val currentRoute = navigationBackStackEntry?.destination?.route
-		var currentCategoryRoute by remember { mutableStateOf("") }
+		val currentRoute = navigationBackStackEntry?.destination?.route ?: NavigationDestination.DashboardScreen
+//		var currentCategoryRoute by remember { mutableStateOf("") }
+		Timber.i("current route: $currentRoute")
 		
 		val todoList by viewModel.todoList.observeAsState(initial = emptyList())
 		val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
@@ -98,6 +99,9 @@ class MainActivity : ComponentActivity() {
 							text = when (currentRoute) {
 								NavigationDestination.DashboardScreen -> NavigationDestination.DashboardScreen
 								NavigationDestination.CompleteScreen -> NavigationDestination.CompleteScreen
+								"${NavigationDestination.Category_1}/{categoryID}" -> NavigationDestination.CategoryScreen
+								"${NavigationDestination.Category_2}/{categoryID}" -> NavigationDestination.CategoryScreen
+								"${NavigationDestination.Category_3}/{categoryID}" -> NavigationDestination.CategoryScreen
 								"${NavigationDestination.CategoryScreen}/{categoryID}" -> NavigationDestination.CategoryScreen
 								"${NavigationDestination.CategoriesScreen}/{categoryID}" -> NavigationDestination.CategoriesScreen
 								"${NavigationDestination.EditTodoScreen}/{todoID}" -> NavigationDestination.EditTodoScreen
@@ -139,7 +143,6 @@ class MainActivity : ComponentActivity() {
 							todoCount = todoList.size,
 							isSelected = currentRoute == NavigationDestination.DashboardScreen
 						) {
-							currentCategoryRoute = ""
 							scope.launch {
 								scaffoldState.drawerState.close()
 							}
@@ -147,11 +150,11 @@ class MainActivity : ComponentActivity() {
 							navigationController.navigate(NavigationDestination.DashboardScreen) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
-										saveState = true
+										saveState = false
 									}
 									
 									launchSingleTop = true
-									restoreState = true
+									restoreState = false
 								}
 							}
 						}
@@ -160,7 +163,6 @@ class MainActivity : ComponentActivity() {
 					
 					
 					items(if (categoryList.size >= 3) 3 else categoryList.size) { index ->
-						val c = LocalContext.current
 						val destination = when (index) {
 							0 -> NavigationDestination.Category_1
 							1 -> NavigationDestination.Category_2
@@ -170,7 +172,7 @@ class MainActivity : ComponentActivity() {
 						
 						CategoryItem(
 							category = categoryList[index],
-							isSelected = (currentRoute == destination) or (currentCategoryRoute == destination),
+							isSelected = currentRoute.startsWith(destination, ignoreCase = true),
 							todoCount = todoList.filter { return@filter it.categoryID == categoryList[index].id }.size,
 							onEditAsDrawerItem = {
 								scope.launch {
@@ -190,12 +192,11 @@ class MainActivity : ComponentActivity() {
 								}
 							}
 						) {
-							currentCategoryRoute = destination
 							scope.launch {
 								scaffoldState.drawerState.close()
 							}
 							
-							val route = "${NavigationDestination.CategoryScreen}/${categoryList[index].id}"
+							val route = "$destination/${categoryList[index].id}"
 							navigationController.navigate(route) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
@@ -219,17 +220,9 @@ class MainActivity : ComponentActivity() {
 									iconRes = null,
 									iconVector = Icons.Default.Check
 								),
-								todoCount = run {
-									var size = 0
-									viewModel.appRepository.todoSize { mSize ->
-										size = mSize
-									}
-									
-									size
-								},
+								todoCount = todoList.filter { it.isComplete }.size,
 								isSelected = currentRoute == NavigationDestination.CompleteScreen
 							) {
-								currentCategoryRoute = ""
 								scope.launch {
 									scaffoldState.drawerState.close()
 								}
@@ -256,9 +249,8 @@ class MainActivity : ComponentActivity() {
 								),
 								todoCount = 0,
 								todoCountVisible = false,
-								isSelected = currentRoute == NavigationDestination.CategoriesScreen
+								isSelected = currentRoute.startsWith(NavigationDestination.CategoriesScreen, ignoreCase = true)
 							) {
-								currentCategoryRoute = ""
 								scope.launch {
 									scaffoldState.drawerState.close()
 								}
@@ -346,6 +338,60 @@ class MainActivity : ComponentActivity() {
 							viewModel = viewModel,
 						)
 					} else "Todo not found".toast(this@MainActivity)
+				}
+				
+				composable(
+					route = "${NavigationDestination.Category_1}/{categoryID}",
+					arguments = listOf(
+						navArgument("categoryID") {
+							type = NavType.IntType
+						}
+					)
+				) { entry ->
+					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
+					if (categoryID != -1) {
+						CategoryScreen(
+							viewModel = viewModel,
+							navController = navigationController,
+							categoryID = categoryID
+						)
+					} else "Category not found".toast(this@MainActivity)
+				}
+				
+				composable(
+					route = "${NavigationDestination.Category_2}/{categoryID}",
+					arguments = listOf(
+						navArgument("categoryID") {
+							type = NavType.IntType
+						}
+					)
+				) { entry ->
+					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
+					if (categoryID != -1) {
+						CategoryScreen(
+							viewModel = viewModel,
+							navController = navigationController,
+							categoryID = categoryID
+						)
+					} else "Category not found".toast(this@MainActivity)
+				}
+				
+				composable(
+					route = "${NavigationDestination.Category_3}/{categoryID}",
+					arguments = listOf(
+						navArgument("categoryID") {
+							type = NavType.IntType
+						}
+					)
+				) { entry ->
+					val categoryID = entry.arguments?.getInt("categoryID") ?: -1
+					if (categoryID != -1) {
+						CategoryScreen(
+							viewModel = viewModel,
+							navController = navigationController,
+							categoryID = categoryID
+						)
+					} else "Category not found".toast(this@MainActivity)
 				}
 				
 			}

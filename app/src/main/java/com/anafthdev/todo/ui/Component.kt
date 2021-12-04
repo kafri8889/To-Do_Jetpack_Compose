@@ -65,7 +65,10 @@ fun DrawerItem(
 	todoCountVisible: Boolean = true,
 	onClick: () -> Unit
 ) {
-	if ((drawerMenu.iconRes == null) and (drawerMenu.iconVector == null)) throw RuntimeException("no icon in drawerItem")
+	if (
+		(drawerMenu.iconRes == null) and
+		(drawerMenu.iconVector == null)
+	) throw RuntimeException("no icon in drawerItem")
 	
 	val background = Brush.linearGradient(
 		colors = listOf(
