@@ -15,4 +15,15 @@ data class Todo(
 	@ColumnInfo(name = "checkboxes") val checkboxes: List<TodoCheckbox>,
 	@ColumnInfo(name = "isComplete") var isComplete: Boolean = false,
 	@PrimaryKey val id: Int = Random.nextInt()
-)
+) {
+	companion object {
+		val todo_sample = Todo(
+			title = "Any Todo",
+			content = "Any Content",
+			date = System.currentTimeMillis(),
+			dateCreated = System.currentTimeMillis(),
+			categoryID = Category.default.id,
+			checkboxes = emptyList(),
+		)
+	}
+}
