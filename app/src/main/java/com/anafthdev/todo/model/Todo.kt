@@ -7,12 +7,12 @@ import kotlin.random.Random
 
 @Entity(tableName = "todo_table")
 data class Todo(
-	@ColumnInfo(name = "title") val title: String,
-	@ColumnInfo(name = "content") val content: String,
-	@ColumnInfo(name = "date") val date: Long,
+	@ColumnInfo(name = "title") var title: String,
+	@ColumnInfo(name = "content") var content: String,
+	@ColumnInfo(name = "date") var date: Long,
 	@ColumnInfo(name = "dateCreated") val dateCreated: Long,
-	@ColumnInfo(name = "categoryID") val categoryID: Int,
-	@ColumnInfo(name = "checkboxes") val checkboxes: List<TodoCheckbox>,
+	@ColumnInfo(name = "categoryID") var categoryID: Int,
+	@ColumnInfo(name = "checkboxes") var checkboxes: List<TodoCheckbox>,
 	@ColumnInfo(name = "isComplete") var isComplete: Boolean = false,
 	@PrimaryKey val id: Int = Random.nextInt()
 ) {

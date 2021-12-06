@@ -1,44 +1,67 @@
 package com.anafthdev.todo.ui
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import android.app.DatePickerDialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.ExperimentalUnitApi
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import com.anafthdev.todo.R
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.model.Category
-import com.anafthdev.todo.ui.theme.on_surface_light
 import com.anafthdev.todo.utils.ComposeUtil
-import com.anafthdev.todo.common.AppViewModel
-import com.anafthdev.todo.data.NavigationDestination
+import com.anafthdev.todo.common.TodoViewModel
+import com.anafthdev.todo.data.TodoNavigation
 import com.anafthdev.todo.model.Todo
-import com.anafthdev.todo.ui.theme.surface_light
+import com.anafthdev.todo.ui.theme.*
+import com.anafthdev.todo.utils.AppUtil.get
 import com.anafthdev.todo.utils.AppUtil.toast
 import kotlinx.coroutines.launch
+import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 @OptIn(
 	ExperimentalComposeUiApi::class,
 	ExperimentalMaterialApi::class
 )
 @Composable
-fun DashboardScreen(viewModel: AppViewModel) {
+fun DashboardScreen(
+	navController: NavHostController,
+	viewModel: TodoViewModel
+) {
 	
 	val context = LocalContext.current
 	val keyboardController = LocalSoftwareKeyboardController.current
@@ -139,12 +162,22 @@ fun DashboardScreen(viewModel: AppViewModel) {
 						onCheckboxValueChange = { mIsTodoComplete ->
 							isTodoComplete = mIsTodoComplete
 							todo.isComplete = mIsTodoComplete
-							viewModel.appRepository.updateTodo(todo) {
+							viewModel.repository.updateTodo(todo) {
 								viewModel.getAllTodo()
 							}
 						},
 						onClick = {
-						
+							val route = "${TodoNavigation.EditTodoScreen}/${todo.id}"
+							navController.navigate(route) {
+								navController.graph.startDestinationRoute?.let {
+									popUpTo(TodoNavigation.Navigation.DashboardScreen.route) {
+										saveState = false
+									}
+									
+									launchSingleTop = true
+									restoreState = false
+								}
+							}
 						}
 					)
 				}
@@ -158,7 +191,11 @@ fun DashboardScreen(viewModel: AppViewModel) {
 
 
 @Composable
-fun CompleteScreen(viewModel: AppViewModel) {
+fun CompleteScreen(
+	navController: NavHostController,
+	viewModel: TodoViewModel
+) {
+	
 	val todoList by viewModel.todoList.observeAsState(initial = emptyList())
 	
 	Column {
@@ -173,12 +210,22 @@ fun CompleteScreen(viewModel: AppViewModel) {
 					onCheckboxValueChange = { mIsTodoComplete ->
 						isTodoComplete = mIsTodoComplete
 						todo.isComplete = mIsTodoComplete
-						viewModel.appRepository.updateTodo(todo) {
+						viewModel.repository.updateTodo(todo) {
 							viewModel.getAllTodo()
 						}
 					},
 					onClick = {
-					
+						val route = "${TodoNavigation.EditTodoScreen}/${todo.id}"
+						navController.navigate(route) {
+							navController.graph.startDestinationRoute?.let {
+								popUpTo(TodoNavigation.Navigation.CompleteScreen.route) {
+									saveState = false
+								}
+								
+								launchSingleTop = true
+								restoreState = false
+							}
+						}
 					}
 				)
 			}
@@ -196,7 +243,7 @@ fun CompleteScreen(viewModel: AppViewModel) {
 )
 @Composable
 fun CategoriesScreen(
-	viewModel: AppViewModel,
+	viewModel: TodoViewModel,
 	navController: NavHostController,
 	cID: Int? = null
 ) {
@@ -225,7 +272,7 @@ fun CategoriesScreen(
 	}
 	
 	if ((cID != null) and (cID != -1) and !hasNavigate) {
-		viewModel.appRepository.getCategory(cID!!) { category ->
+		viewModel.repository.getCategory(cID!!) { category ->
 			categoryName = category.name
 			selectedColor = category.color
 			categoryID = category.id
@@ -254,6 +301,13 @@ fun CategoriesScreen(
 				categoryID = 0
 				keyboardController?.hide()
 			},
+			onFocusChange = { focusState ->
+				// exit edit mode when category name is blank and text field not focused
+				if (categoryName.isBlank() and !focusState.isFocused) {
+					categoryInputModeEdit = false
+					selectedColor = CategoryColor.values[0]
+				}
+			}
 		)
 		
 		LazyColumn {
@@ -275,10 +329,10 @@ fun CategoriesScreen(
 				) {
 					keyboardController?.hide()
 					
-					val route = "${NavigationDestination.CategoryScreen}/${category.id}"
+					val route = "${TodoNavigation.CategoryScreen}/${category.id}"
 					navController.navigate(route) {
-						navController.graph.startDestinationRoute?.let { destination ->
-							popUpTo(destination) {
+						navController.graph.startDestinationRoute?.let {
+							popUpTo(TodoNavigation.Navigation.CategoriesScreen.route) {
 								saveState = false
 							}
 							
@@ -299,7 +353,7 @@ fun CategoriesScreen(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CategoryScreen(
-	viewModel: AppViewModel,
+	viewModel: TodoViewModel,
 	navController: NavHostController,
 	categoryID: Int
 ) {
@@ -322,7 +376,7 @@ fun CategoryScreen(
 	}
 	
 	if (!hasNavigate) {
-		viewModel.appRepository.getCategory(categoryID) { mCategory ->
+		viewModel.repository.getCategory(categoryID) { mCategory ->
 			category = mCategory
 		}
 		
@@ -366,10 +420,10 @@ fun CategoryScreen(
 					viewModel = viewModel,
 					isTodoComplete = isTodoComplete,
 					onClick = {
-						val route = "${NavigationDestination.EditTodoScreen}/${todo.id}"
+						val route = "${TodoNavigation.EditTodoScreen}/${todo.id}"
 						navController.navigate(route) {
-							navController.graph.startDestinationRoute?.let { destination ->
-								popUpTo(destination) {
+							navController.graph.startDestinationRoute?.let {
+								popUpTo(TodoNavigation.Navigation.CategoriesScreen.route) {
 									saveState = false
 								}
 								
@@ -381,7 +435,7 @@ fun CategoryScreen(
 					onCheckboxValueChange = { mIsTodoComplete ->
 						isTodoComplete = mIsTodoComplete
 						todo.isComplete = mIsTodoComplete
-						viewModel.appRepository.updateTodo(todo) {
+						viewModel.repository.updateTodo(todo) {
 							viewModel.getTodoListByID(categoryID)
 						}
 					}
@@ -392,10 +446,390 @@ fun CategoryScreen(
 }
 
 
+@OptIn(
+	ExperimentalUnitApi::class,
+	ExperimentalComposeUiApi::class,
+	ExperimentalMaterialApi::class
+)
 @Composable
 fun EditTodoScreen(
 	todoID: Int,
-	viewModel: AppViewModel
+	viewModel: TodoViewModel
 ) {
-
+	
+	val context = LocalContext.current
+	val focusManager = LocalFocusManager.current
+	val keyboardController = LocalSoftwareKeyboardController.current
+	
+	val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
+	val scope = rememberCoroutineScope()
+	val scaffoldState = rememberBottomSheetScaffoldState(
+		bottomSheetState = rememberBottomSheetState(BottomSheetValue.Collapsed)
+	)
+	
+	var todo by remember { mutableStateOf(Todo.todo_sample) }
+	var title by remember { mutableStateOf(todo.title) }
+	var content by remember { mutableStateOf(todo.content) }
+	var date by remember { mutableStateOf(todo.date) }
+	var isComplete by remember { mutableStateOf(todo.isComplete) }
+	var selectedCategoryID by remember { mutableStateOf(todo.categoryID) }
+	var todoCheckboxes by remember { mutableStateOf(todo.checkboxes) }
+	var currentCategory by remember { mutableStateOf(Category.default) }
+	
+	var currentFocusedCheckboxTitle by remember { mutableStateOf("") }
+	
+	var hasNavigate by remember { mutableStateOf(false) }
+	
+	if (!hasNavigate) {
+		viewModel.repository.getTodo(todoID) { mTodo ->
+			todo = mTodo
+			title = todo.title
+			content = todo.content
+			date = todo.date
+			isComplete = todo.isComplete
+			selectedCategoryID = todo.categoryID
+			todoCheckboxes = mTodo.checkboxes
+			
+			viewModel.repository.getCategory(selectedCategoryID) { mCategory ->
+				currentCategory = mCategory
+			}
+		}
+		
+		true.also { hasNavigate = it }
+	}
+	
+//	BackHandler {
+//
+//	}
+	
+	BottomSheetScaffold(
+		scaffoldState = scaffoldState,
+		sheetBackgroundColor = surface_light,
+		sheetPeekHeight = 0.dp,
+		sheetElevation = 8.dp,
+		sheetShape = RoundedCornerShape(24.dp),
+		sheetContent = {
+			LazyColumn(
+				modifier = Modifier
+					.fillMaxWidth()
+					.height(384.dp)
+			) {
+				items(categoryList) { category ->
+					SelectCategoryItem(
+						category = category,
+						onClick = {
+							selectedCategoryID = category.id
+							todo.categoryID = selectedCategoryID
+							currentCategory = categoryList.get { it.id == selectedCategoryID } ?: Category.default
+							viewModel.updateTodo(todo)
+							scope.launch {
+								scaffoldState.bottomSheetState.collapse()
+							}
+						}
+					)
+				}
+			}
+		},
+	) {
+		Column(
+			modifier = Modifier
+				.fillMaxSize()
+//				.verticalScroll(rememberScrollState())
+		) {
+			
+			// Checkbox and To-Do title
+			Row(verticalAlignment = Alignment.CenterVertically) {
+				Checkbox(
+					checked = isComplete,
+					onCheckedChange = { isChecked ->
+						isComplete = isChecked
+						todo.isComplete = isComplete
+						viewModel.updateTodo(todo)
+					},
+					modifier = Modifier
+						.padding(start = 16.dp, end = 16.dp)
+				)
+				
+				Text(
+					text = title,
+					color = black.copy(alpha = 0.8f),
+					fontWeight = FontWeight.SemiBold,
+					fontSize = TextUnit(16f, TextUnitType.Sp),
+					textDecoration = if (isComplete) TextDecoration.LineThrough else TextDecoration.None
+				)
+			} // Checkbox and To-Do title
+			
+			
+			
+			Column(
+				modifier = Modifier
+					.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+					.clip(RoundedCornerShape(8.dp))
+					.background(gray.copy(alpha = 0.08f))
+			) {
+				
+				// Category
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					modifier = Modifier
+						.padding(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)
+				) {
+					
+					Text(
+						text = "Category",
+						color = gray,
+						fontSize = TextUnit(14f, TextUnitType.Sp),
+						fontWeight = FontWeight.SemiBold,
+						modifier = Modifier
+							.wrapContentSize(Alignment.CenterStart)
+					)
+					
+					Spacer(modifier = Modifier.weight(1f))
+					
+					Card(
+						elevation = 2.dp,
+						backgroundColor = surface_light,
+						shape = RoundedCornerShape(8.dp),
+						onClick = {
+							scope.launch {
+								if (scaffoldState.bottomSheetState.isExpanded) {
+									scaffoldState.bottomSheetState.collapse()
+								} else scaffoldState.bottomSheetState.expand()
+							}
+						},
+					) {
+						Row(
+							verticalAlignment = Alignment.CenterVertically,
+							horizontalArrangement = Arrangement.Center,
+							modifier = Modifier
+								.size(width = 120.dp, height = 32.dp)
+						
+						) {
+							Icon(
+								painter = painterResource(id = R.drawable.ic_rect),
+								contentDescription = null,
+								tint = Color(currentCategory.color),
+								modifier = Modifier
+									.size(22.dp)
+									.padding(4.dp)
+							)
+							
+							
+							
+							Text(
+								text = currentCategory.name,
+								textAlign = TextAlign.Center,
+								fontSize = TextUnit(12f, TextUnitType.Sp),
+								fontWeight = FontWeight.Bold,
+								color = black.copy(alpha = 0.8f),
+								overflow = TextOverflow.Ellipsis,
+								modifier = Modifier
+									.padding(start = 2.dp, end = 2.dp)
+							)
+							
+							
+							
+							val rotationAngle by animateFloatAsState(
+								targetValue = run {
+									if (scaffoldState.bottomSheetState.isExpanded) 180f
+									else -360f
+								},
+								animationSpec = tween(400)
+							)
+							
+							Icon(
+								imageVector = Icons.Default.KeyboardArrowDown,
+								contentDescription = null,
+								tint = black.copy(alpha = 0.8f),
+								modifier = Modifier
+									.size(28.dp)
+									.padding(start = 4.dp, end = 4.dp, top = 4.dp)
+									.rotate(rotationAngle)
+							)
+						}
+					}
+				}  // Category
+				
+				
+				
+				// Date
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					modifier = Modifier
+						.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 14.dp)
+				) {
+					
+					Text(
+						text = "Due Date",
+						color = gray,
+						fontSize = TextUnit(14f, TextUnitType.Sp),
+						fontWeight = FontWeight.SemiBold,
+						modifier = Modifier
+							.wrapContentSize(Alignment.CenterStart)
+					)
+					
+					Spacer(modifier = Modifier.weight(1f))
+					
+					Card(
+						elevation = 2.dp,
+						backgroundColor = surface_light,
+						shape = RoundedCornerShape(8.dp),
+						onClick = {
+							val calendar = Calendar.getInstance()
+							val listener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
+								calendar[Calendar.DAY_OF_MONTH] = dayOfMonth
+								calendar[Calendar.MONTH] = month
+								calendar[Calendar.YEAR] = year
+								
+								date = calendar.timeInMillis
+								todo.date = date
+								viewModel.updateTodo(todo)
+							}
+							
+							DatePickerDialog(
+								context,
+								listener,
+								calendar[Calendar.YEAR],
+								calendar[Calendar.MONTH],
+								calendar[Calendar.DAY_OF_MONTH]
+							).show()
+						},
+					) {
+						Row(
+							verticalAlignment = Alignment.CenterVertically,
+							horizontalArrangement = Arrangement.Center,
+							modifier = Modifier
+								.size(width = 120.dp, height = 32.dp)
+						) {
+							Text(
+								text = run {
+									if (date == 0L) "Select Date"
+									else SimpleDateFormat("MMM dd yyyy", Locale.getDefault()).format(date)
+								},
+								textAlign = TextAlign.Center,
+								fontSize = TextUnit(12f, TextUnitType.Sp),
+								fontWeight = FontWeight.Bold,
+								color = black.copy(alpha = 0.8f),
+								overflow = TextOverflow.Ellipsis,
+								modifier = Modifier
+									.padding(start = 2.dp, end = 2.dp)
+							)
+							
+							
+							
+							Icon(
+								imageVector = Icons.Default.KeyboardArrowDown,
+								contentDescription = null,
+								tint = black.copy(alpha = 0.8f),
+								modifier = Modifier
+									.size(28.dp)
+									.padding(start = 4.dp, end = 4.dp, top = 4.dp)
+							)
+						}
+					}
+				}  // Date
+			}
+			
+			
+			
+			Card(
+				elevation = 2.dp,
+				backgroundColor = bianca,
+				shape = RoundedCornerShape(8.dp),
+				onClick = {
+				
+				},
+				modifier = Modifier
+					.wrapContentSize()
+					.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+			) {
+				OutlinedTextField(
+					value = content,
+					onValueChange = { s ->
+						content = s
+						todo.content = content
+						viewModel.updateTodo(todo)
+					},
+					textStyle = TextStyle(
+						fontSize = TextUnit(14f, TextUnitType.Sp)
+					),
+					placeholder = {
+						Text("Write a note...")
+					},
+					colors = TextFieldDefaults.outlinedTextFieldColors(
+						textColor = buttercup.copy(alpha = 0.8f),
+						focusedBorderColor = Color.Transparent,
+						unfocusedBorderColor = Color.Transparent
+					),
+					modifier = Modifier
+						.fillMaxWidth()
+						.height(288.dp)
+				
+				)
+			}
+			
+			
+			
+			TodoCheckboxes(
+				value = currentFocusedCheckboxTitle,
+				todoCheckboxes = todoCheckboxes,
+				onCheckedChange = { id, isChecked ->
+					todo.checkboxes = ArrayList(todoCheckboxes).apply {
+						get { it.id == id }!!.isComplete = isChecked
+					}
+					
+					todo.checkboxes = todoCheckboxes
+					viewModel.repository.updateTodo(todo) {
+						viewModel.repository.getTodo(todoID) { mTodo ->
+							todo = mTodo
+						}
+					}
+				},
+				onDelete = { id ->
+					todoCheckboxes = ArrayList(todoCheckboxes).apply {
+						remove(todoCheckboxes.get { it.id == id }!!)
+					}
+					
+					todo.checkboxes = todoCheckboxes
+					viewModel.repository.updateTodo(todo) {
+						viewModel.repository.getTodo(todoID) { mTodo ->
+							todo = mTodo
+						}
+					}
+				},
+				onFocusChange = { s ->
+					currentFocusedCheckboxTitle = s
+				},
+				onValueChange = { id, s ->
+					currentFocusedCheckboxTitle = s
+					
+					todo.checkboxes = ArrayList(todoCheckboxes).apply {
+						get { it.id == id }!!.title = currentFocusedCheckboxTitle
+					}
+					
+					todo.checkboxes = todoCheckboxes
+					viewModel.repository.updateTodo(todo) {
+						viewModel.repository.getTodo(todoID) { mTodo ->
+							todo = mTodo
+						}
+					}
+				},
+				onNewItem = { todoCheckbox ->
+					todoCheckboxes = ArrayList(todoCheckboxes).apply {
+						add(todoCheckbox)
+					}
+					
+					todo.checkboxes = todoCheckboxes
+					viewModel.repository.updateTodo(todo) {
+						viewModel.repository.getTodo(todoID) { mTodo ->
+							todo = mTodo
+						}
+					}
+				},
+				modifier = Modifier
+					.padding(start = 8.dp, end = 8.dp, top = 16.dp)
+			)
+			
+		}  // Main Content
+	}  // Bottom Sheet Scaffold
 }

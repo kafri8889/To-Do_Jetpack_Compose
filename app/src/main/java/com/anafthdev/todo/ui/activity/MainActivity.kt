@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +16,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -27,10 +27,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.anafthdev.todo.BuildConfig
 import com.anafthdev.todo.R
-import com.anafthdev.todo.common.AppViewModel
+import com.anafthdev.todo.common.TodoViewModel
 import com.anafthdev.todo.data.CategoryColor
-import com.anafthdev.todo.data.NavigationDestination
-import com.anafthdev.todo.di.Application
+import com.anafthdev.todo.data.TodoNavigation
+import com.anafthdev.todo.TodoApplication
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.DrawerMenu
 import com.anafthdev.todo.ui.*
@@ -44,11 +44,11 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 	
 	@Inject lateinit var appRepository: DatabaseUtil
-	@Inject lateinit var viewModel: AppViewModel
+	@Inject lateinit var viewModel: TodoViewModel
 	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
-		(applicationContext as Application).appComponent.inject(this)
+		(applicationContext as TodoApplication).appComponent.inject(this)
 		if (BuildConfig.DEBUG) Timber.plant(object : Timber.DebugTree() {
 			override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
 				super.log(priority, "DEBUG_$tag", message, t)
@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
 		val navigationController = rememberNavController()
 		
 		val navigationBackStackEntry by navigationController.currentBackStackEntryAsState()
-		val currentRoute = navigationBackStackEntry?.destination?.route ?: NavigationDestination.DashboardScreen
+		val currentRoute = navigationBackStackEntry?.destination?.route ?: TodoNavigation.Navigation.DashboardScreen.route
 //		var currentCategoryRoute by remember { mutableStateOf("") }
 		Timber.i("current route: $currentRoute")
 		
@@ -97,32 +97,51 @@ class MainActivity : ComponentActivity() {
 					title = {
 						Text(
 							text = when (currentRoute) {
-								NavigationDestination.DashboardScreen -> NavigationDestination.DashboardScreen
-								NavigationDestination.CompleteScreen -> NavigationDestination.CompleteScreen
-								"${NavigationDestination.Category_1}/{categoryID}" -> NavigationDestination.CategoryScreen
-								"${NavigationDestination.Category_2}/{categoryID}" -> NavigationDestination.CategoryScreen
-								"${NavigationDestination.Category_3}/{categoryID}" -> NavigationDestination.CategoryScreen
-								"${NavigationDestination.CategoryScreen}/{categoryID}" -> NavigationDestination.CategoryScreen
-								"${NavigationDestination.CategoriesScreen}/{categoryID}" -> NavigationDestination.CategoriesScreen
-								"${NavigationDestination.EditTodoScreen}/{todoID}" -> NavigationDestination.EditTodoScreen
-								else -> NavigationDestination.DashboardScreen
+								TodoNavigation.Navigation.DashboardScreen.route -> TodoNavigation.DashboardScreen
+								TodoNavigation.Navigation.CompleteScreen.route -> TodoNavigation.CompleteScreen
+								TodoNavigation.Navigation.CategoriesScreen.route -> TodoNavigation.CategoriesScreen
+								TodoNavigation.Navigation.CategoryScreen.route -> TodoNavigation.CategoryScreen
+								TodoNavigation.Navigation.Category_1.route -> TodoNavigation.CategoryScreen
+								TodoNavigation.Navigation.Category_2.route -> TodoNavigation.CategoryScreen
+								TodoNavigation.Navigation.Category_3.route -> TodoNavigation.CategoryScreen
+								TodoNavigation.Navigation.EditTodoScreen.route -> ""
+								else -> TodoNavigation.DashboardScreen
 							},
 							color = black
 						)
 					},
 					navigationIcon = {
-						IconButton(
-							onClick = {
-								scope.launch {
-									scaffoldState.drawerState.open()
+						if (currentRoute != TodoNavigation.Navigation.EditTodoScreen.route) {
+							IconButton(
+								onClick = {
+									scope.launch {
+										scaffoldState.drawerState.open()
+									}
 								}
+							) {
+								Icon(
+									imageVector = Icons.Default.Menu,
+									tint = black,
+									contentDescription = null
+								)
 							}
-						) {
-							Icon(
-								imageVector = Icons.Default.Menu,
-								tint = black,
-								contentDescription = null
-							)
+						}
+					},
+					actions = {
+						if (currentRoute == TodoNavigation.Navigation.EditTodoScreen.route) {
+							IconButton(
+								onClick = {
+									onBackPressed()
+								}
+							) {
+								Icon(
+									painter = painterResource(id = R.drawable.ic_x_mark),
+									tint = black,
+									contentDescription = null,
+									modifier = Modifier
+										.size(12.dp)
+								)
+							}
 						}
 					}
 				)
@@ -141,13 +160,13 @@ class MainActivity : ComponentActivity() {
 								iconVector = null
 							),
 							todoCount = todoList.size,
-							isSelected = currentRoute == NavigationDestination.DashboardScreen
+							isSelected = currentRoute == TodoNavigation.Navigation.DashboardScreen.route
 						) {
 							scope.launch {
 								scaffoldState.drawerState.close()
 							}
 							
-							navigationController.navigate(NavigationDestination.DashboardScreen) {
+							navigationController.navigate(TodoNavigation.Navigation.DashboardScreen.route) {
 								navigationController.graph.startDestinationRoute?.let { destination ->
 									popUpTo(destination) {
 										saveState = false
@@ -164,9 +183,9 @@ class MainActivity : ComponentActivity() {
 					
 					items(if (categoryList.size >= 3) 3 else categoryList.size) { index ->
 						val destination = when (index) {
-							0 -> NavigationDestination.Category_1
-							1 -> NavigationDestination.Category_2
-							2 -> NavigationDestination.Category_3
+							0 -> TodoNavigation.Category_1
+							1 -> TodoNavigation.Category_2
+							2 -> TodoNavigation.Category_3
 							else -> throw IndexOutOfBoundsException("Destination to category: $index")
 						}
 						
@@ -179,10 +198,10 @@ class MainActivity : ComponentActivity() {
 									scaffoldState.drawerState.close()
 								}
 								
-								val route = "${NavigationDestination.CategoriesScreen}/${categoryList[index].id}"
+								val route = "${TodoNavigation.CategoriesScreen}/${categoryList[index].id}"
 								navigationController.navigate(route) {
-									navigationController.graph.startDestinationRoute?.let { destination ->
-										popUpTo(destination) {
+									navigationController.graph.startDestinationRoute?.let {
+										popUpTo(TodoNavigation.Navigation.DashboardScreen.route) {
 											saveState = false
 										}
 										
@@ -198,8 +217,8 @@ class MainActivity : ComponentActivity() {
 							
 							val route = "$destination/${categoryList[index].id}"
 							navigationController.navigate(route) {
-								navigationController.graph.startDestinationRoute?.let { destination ->
-									popUpTo(destination) {
+								navigationController.graph.startDestinationRoute?.let {
+									popUpTo(TodoNavigation.Navigation.DashboardScreen.route) {
 										saveState = false
 									}
 									
@@ -221,15 +240,15 @@ class MainActivity : ComponentActivity() {
 									iconVector = Icons.Default.Check
 								),
 								todoCount = todoList.filter { it.isComplete }.size,
-								isSelected = currentRoute == NavigationDestination.CompleteScreen
+								isSelected = currentRoute == TodoNavigation.Navigation.CompleteScreen.route
 							) {
 								scope.launch {
 									scaffoldState.drawerState.close()
 								}
 								
-								navigationController.navigate(NavigationDestination.CompleteScreen) {
-									navigationController.graph.startDestinationRoute?.let { destination ->
-										popUpTo(destination) {
+								navigationController.navigate(TodoNavigation.Navigation.CompleteScreen.route) {
+									navigationController.graph.startDestinationRoute?.let {
+										popUpTo(TodoNavigation.Navigation.DashboardScreen.route) {
 											saveState = false
 										}
 										
@@ -249,13 +268,13 @@ class MainActivity : ComponentActivity() {
 								),
 								todoCount = 0,
 								todoCountVisible = false,
-								isSelected = currentRoute.startsWith(NavigationDestination.CategoriesScreen, ignoreCase = true)
+								isSelected = currentRoute == TodoNavigation.Navigation.CategoriesScreen.route
 							) {
 								scope.launch {
 									scaffoldState.drawerState.close()
 								}
 								
-								val route = "${NavigationDestination.CategoriesScreen}/${-1}"
+								val route = "${TodoNavigation.CategoriesScreen}/${-1}"
 								navigationController.navigate(route) {
 									navigationController.graph.startDestinationRoute?.let { destination ->
 										popUpTo(destination) {
@@ -279,18 +298,24 @@ class MainActivity : ComponentActivity() {
 			
 			NavHost(
 				navController = navigationController,
-				startDestination = NavigationDestination.DashboardScreen,
+				startDestination = TodoNavigation.Navigation.DashboardScreen.route,
 			) {
-				composable(NavigationDestination.DashboardScreen) {
-					DashboardScreen(viewModel)
+				composable(TodoNavigation.Navigation.DashboardScreen.route) {
+					DashboardScreen(
+						navController = navigationController,
+						viewModel = viewModel
+					)
 				}
 				
-				composable(NavigationDestination.CompleteScreen) {
-					CompleteScreen(viewModel)
+				composable(TodoNavigation.Navigation.CompleteScreen.route) {
+					CompleteScreen(
+						navController = navigationController,
+						viewModel = viewModel
+					)
 				}
 				
 				composable(
-					route = "${NavigationDestination.CategoriesScreen}/{categoryID}",
+					route = TodoNavigation.Navigation.CategoriesScreen.route,
 					arguments = listOf(
 						navArgument("categoryID") {
 							type = NavType.IntType
@@ -306,7 +331,7 @@ class MainActivity : ComponentActivity() {
 				}
 				
 				composable(
-					route = "${NavigationDestination.CategoryScreen}/{categoryID}",
+					route = TodoNavigation.Navigation.CategoryScreen.route,
 					arguments = listOf(
 						navArgument("categoryID") {
 							type = NavType.IntType
@@ -324,7 +349,7 @@ class MainActivity : ComponentActivity() {
 				}
 				
 				composable(
-					route = "${NavigationDestination.EditTodoScreen}/{todoID}",
+					route = TodoNavigation.Navigation.EditTodoScreen.route,
 					arguments = listOf(
 						navArgument("todoID") {
 							type = NavType.IntType
@@ -341,7 +366,7 @@ class MainActivity : ComponentActivity() {
 				}
 				
 				composable(
-					route = "${NavigationDestination.Category_1}/{categoryID}",
+					route = TodoNavigation.Navigation.Category_1.route,
 					arguments = listOf(
 						navArgument("categoryID") {
 							type = NavType.IntType
@@ -359,7 +384,7 @@ class MainActivity : ComponentActivity() {
 				}
 				
 				composable(
-					route = "${NavigationDestination.Category_2}/{categoryID}",
+					route = TodoNavigation.Navigation.Category_2.route,
 					arguments = listOf(
 						navArgument("categoryID") {
 							type = NavType.IntType
@@ -377,7 +402,7 @@ class MainActivity : ComponentActivity() {
 				}
 				
 				composable(
-					route = "${NavigationDestination.Category_3}/{categoryID}",
+					route = TodoNavigation.Navigation.Category_3.route,
 					arguments = listOf(
 						navArgument("categoryID") {
 							type = NavType.IntType

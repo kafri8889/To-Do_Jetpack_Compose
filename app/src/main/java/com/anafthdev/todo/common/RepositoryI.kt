@@ -3,9 +3,11 @@ package com.anafthdev.todo.common
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.Todo
 
-interface AppRepositoryI {
+interface RepositoryI {
 	
 	fun getAllTodo(action: (List<Todo>) -> Unit)
+	
+	fun getTodo(mID: Int, action: (Todo) -> Unit)
 	
 	fun getTodoByCategoryID(categoryID: Int, action: (List<Todo>) -> Unit)
 	

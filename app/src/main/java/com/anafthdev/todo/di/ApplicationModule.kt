@@ -1,15 +1,16 @@
 package com.anafthdev.todo.di
 
-import com.anafthdev.todo.common.AppRepository
+import com.anafthdev.todo.TodoApplication
+import com.anafthdev.todo.common.Repository
 import com.anafthdev.todo.database.ApplicationDatabase
 import com.anafthdev.todo.utils.DatabaseUtil
-import com.anafthdev.todo.common.AppViewModel
+import com.anafthdev.todo.common.TodoViewModel
 import dagger.Module
 import dagger.Provides
 import javax.inject.Singleton
 
 @Module
-class ApplicationModule(private val application: Application) {
+class ApplicationModule(private val application: TodoApplication) {
 	
 	@Singleton
 	@Provides
@@ -25,9 +26,9 @@ class ApplicationModule(private val application: Application) {
 	
 	@Singleton
 	@Provides
-	fun provideAppRepository() = AppRepository(provideDatabaseUtil())
+	fun provideAppRepository() = Repository(provideDatabaseUtil())
 	
 	@Singleton
 	@Provides
-	fun provideAppViewModel() = AppViewModel(provideAppRepository())
+	fun provideAppViewModel() = TodoViewModel(provideAppRepository())
 }

@@ -28,6 +28,15 @@ class DatabaseUtil @Inject constructor(applicationDatabase: ApplicationDatabase)
 		} }
 	}
 	
+	fun getTodo(mID: Int, action: (Todo) -> Unit) {
+		var todo: Todo? = null
+		scope.launch {
+			todo = databaseDao.getTodo(mID)
+		}.invokeOnCompletion { postAction {
+			action(todo ?: Todo.todo_sample)
+		} }
+	}
+	
 	fun getTodoByCategoryID(categoryID: Int, action: (List<Todo>) -> Unit) {
 		val todoList = ArrayList<Todo>()
 		scope.launch {

@@ -1,5 +1,6 @@
 package com.anafthdev.todo.ui
 
+import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -9,23 +10,29 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -44,17 +51,20 @@ import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import com.anafthdev.todo.R
-import com.anafthdev.todo.common.AppRepository
-import com.anafthdev.todo.common.AppViewModel
+import com.anafthdev.todo.common.Repository
+import com.anafthdev.todo.common.TodoViewModel
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.DrawerMenu
 import com.anafthdev.todo.model.Todo
+import com.anafthdev.todo.model.TodoCheckbox
 import com.anafthdev.todo.ui.theme.*
 import com.google.accompanist.flowlayout.FlowMainAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
 
 @OptIn(ExperimentalUnitApi::class)
 @Composable
@@ -249,7 +259,7 @@ fun SelectCategoryItem(
 	}
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun SelectCategoryItemPreview() {
 	SelectCategoryItem(
@@ -434,7 +444,7 @@ fun CategoryItem(
 	}
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun CategoryItemPreview() {
 	val categoryHealth = Category(
@@ -470,13 +480,13 @@ fun CategoryItemPreview() {
 fun TodoItem(
 	todo: Todo,
 	isTodoComplete: Boolean,
-	viewModel: AppViewModel,
+	viewModel: TodoViewModel,
 	onCheckboxValueChange: (Boolean) -> Unit,
 	onClick: () -> Unit
 ) {
 	
 	var category by remember { mutableStateOf(Category.default) }
-	viewModel.appRepository.getCategory(todo.categoryID) { mCategory ->
+	viewModel.repository.getCategory(todo.categoryID) { mCategory ->
 		category = mCategory
 	}
 	
@@ -501,7 +511,8 @@ fun TodoItem(
 				checked = isTodoComplete,
 				onCheckedChange = onCheckboxValueChange,
 				modifier = Modifier
-					.weight(0.1f)
+					.weight(0.1f, fill = false)
+					.padding(start = 8.dp)
 			)
 			
 			Text(
@@ -539,7 +550,7 @@ fun TodoItemPreview() {
 				categoryID = Category.default.id
 			),
 			isTodoComplete = false,
-			viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+			viewModel = TodoViewModel(Repository.FakeRepository()),
 			onCheckboxValueChange = {},
 			onClick = {}
 		)
@@ -554,7 +565,7 @@ fun TodoItemPreview() {
 				categoryID = Category.default.id
 			),
 			isTodoComplete = true,
-			viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+			viewModel = TodoViewModel(Repository.FakeRepository()),
 			onCheckboxValueChange = {},
 			onClick = {}
 		)
@@ -565,12 +576,16 @@ fun TodoItemPreview() {
 
 
 
-@OptIn(ExperimentalUnitApi::class)
+@OptIn(
+	ExperimentalUnitApi::class,
+	ExperimentalMaterialApi::class,
+	ExperimentalAnimationApi::class
+)
 @Composable
 fun TodoItemInput(
 	todoName: String,
 	textFieldFocusRequester: FocusRequester,
-	viewModel: AppViewModel,
+	viewModel: TodoViewModel,
 	rotationAngleArrowIcon: Float = 0f,
 	categoryID: Int? = null,
 	category: Category? = null,
@@ -584,11 +599,14 @@ fun TodoItemInput(
 	
 	// if the value is 0, it means the date has not been set
 	var selectedDate by remember { mutableStateOf(0L) }
+	
 	var showPopupDate by remember { mutableStateOf(false) }
 	
+	var isTextFieldFocused by remember { mutableStateOf(false) }
+	
 	if (categoryID != null) {
-		viewModel.appRepository.getCategory(categoryID) { category ->
-			currentCategory = category
+		viewModel.repository.getCategory(categoryID) { mCategory ->
+			currentCategory = mCategory
 		}
 	}
 	
@@ -602,7 +620,9 @@ fun TodoItemInput(
 		// Text Field
 		OutlinedTextField(
 			value = todoName,
-			onValueChange = onValueChange,
+			onValueChange = { s ->
+				if (s.length <= 90) onValueChange(s)
+			},
 			maxLines = 4,
 			keyboardOptions = KeyboardOptions(
 				imeAction = ImeAction.Done
@@ -630,154 +650,188 @@ fun TodoItemInput(
 				)
 			},
 			modifier = Modifier
-				.weight(2f)
+				.weight(1.5f)
 				.focusRequester(textFieldFocusRequester)
+				.onFocusChanged { focusState ->
+					isTextFieldFocused = focusState.isFocused
+				}
 		)
 		
 		
 		
-		// Date
-		IconButton(
-			onClick = {
-				if (selectedDate == 0L) {
-					val calendar = Calendar.getInstance()
-					val listener = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
-						calendar[Calendar.DAY_OF_MONTH] = dayOfMonth
-						calendar[Calendar.MONTH] = month
-						calendar[Calendar.YEAR] = year
-					
-						selectedDate = calendar.timeInMillis
-					}
-				
-					DatePickerDialog(
-						context,
-						listener,
-						calendar[Calendar.YEAR],
-						calendar[Calendar.MONTH],
-						calendar[Calendar.DAY_OF_MONTH]
-					).show()
-				} else {
-					showPopupDate = true
-				}
-			},
+		AnimatedVisibility(
+			visible = isTextFieldFocused,
+			enter = scaleIn(
+				animationSpec = tween(600)
+			),
+			exit = scaleOut(
+				animationSpec = tween(600)
+			),
 			modifier = Modifier
-				.size(32.dp)
-				.background(
-					gray.copy(alpha = 0.12f),
-					shape = RoundedCornerShape(8.dp)
-				)
-				.weight(0.4f, false)
+				.weight(1f)
 		) {
-			Icon(
-				imageVector = Icons.Default.DateRange,
-				tint = black.copy(alpha = 0.8f),
-				contentDescription = null,
-				modifier = Modifier
-					.size(18.dp)
-			)
 			
-			if (showPopupDate) {
-				Popup(
-					alignment = Alignment.TopCenter,
-					onDismissRequest = {
-						showPopupDate = false
-					}
+			Row {
+				// Date
+				IconButton(
+					onClick = {
+						if (selectedDate == 0L) {
+							val calendar = Calendar.getInstance()
+							val listener = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
+								calendar[Calendar.DAY_OF_MONTH] = dayOfMonth
+								calendar[Calendar.MONTH] = month
+								calendar[Calendar.YEAR] = year
+								
+								selectedDate = calendar.timeInMillis
+							}
+							
+							DatePickerDialog(
+								context,
+								listener,
+								calendar[Calendar.YEAR],
+								calendar[Calendar.MONTH],
+								calendar[Calendar.DAY_OF_MONTH]
+							).show()
+						} else {
+							showPopupDate = true
+						}
+					},
+					modifier = Modifier
+						.size(36.dp)
+						.background(
+							gray.copy(alpha = 0.12f),
+							shape = RoundedCornerShape(8.dp)
+						)
+						.weight(0.4f, false)
 				) {
-					Card(
-						elevation = 4.dp
-					) {
-						Column(
-							horizontalAlignment = Alignment.CenterHorizontally,
-							modifier = Modifier
-								.background(surface_light)
-								.padding(16.dp)
-						) {
-							Text(
-								text = if (selectedDate == 0L) "-/-/-" else SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(selectedDate),
-								color = black.copy(alpha = 0.8f),
-								fontWeight = FontWeight.SemiBold
-							)
-							
-							
-							
-							OutlinedButton(
-								onClick = {
-									selectedDate = 0L
-									showPopupDate = false
-								},
+					if (selectedDate != 0L) {
+						BadgeBox {
+							Icon(
+								imageVector = Icons.Default.DateRange,
+								tint = black.copy(alpha = 0.8f),
+								contentDescription = null,
 								modifier = Modifier
-									.padding(top = 8.dp)
+									.size(18.dp)
+							)
+						}
+					} else {
+						Icon(
+							imageVector = Icons.Default.DateRange,
+							tint = black.copy(alpha = 0.8f),
+							contentDescription = null,
+							modifier = Modifier
+								.size(18.dp)
+						)
+					}
+					
+					if (showPopupDate) {
+						Popup(
+							alignment = Alignment.TopCenter,
+							onDismissRequest = {
+								showPopupDate = false
+							}
+						) {
+							Card(
+								elevation = 4.dp
 							) {
-								Text("Change Date")
+								Column(
+									horizontalAlignment = Alignment.CenterHorizontally,
+									modifier = Modifier
+										.background(surface_light)
+										.padding(16.dp)
+								) {
+									Text(
+										text = if (selectedDate == 0L) "-/-/-" else SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault()).format(selectedDate),
+										color = black.copy(alpha = 0.8f),
+										fontWeight = FontWeight.SemiBold
+									)
+									
+									
+									
+									OutlinedButton(
+										onClick = {
+											selectedDate = 0L
+											showPopupDate = false
+										},
+										modifier = Modifier
+											.padding(top = 8.dp)
+									) {
+										Text("Remove Date")
+									}
+								}
 							}
 						}
 					}
 				}
-			}
-		}
-		
-		
-		
-		// Category
-		Row(
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.Center,
-			modifier = Modifier
-				.size(36.dp)
-				.weight(0.9f)
-				.padding(start = 4.dp)
-				.background(
-					gray.copy(alpha = 0.12f),
-					shape = RoundedCornerShape(8.dp)
-				)
-				.then(
-					if (category == null) {
-						Modifier.clickable {
-							onClick()
-						}
-					} else Modifier
-				)
-		) {
-			Icon(
-				painter = painterResource(id = R.drawable.ic_rect),
-				contentDescription = null,
-				tint = Color(category?.color ?: currentCategory.color),
-				modifier = Modifier
-					.size(22.dp)
-					.padding(4.dp)
-			)
-			
-			
-			
-			Text(
-				text = category?.name ?: currentCategory.name,
-				textAlign = TextAlign.Center,
-				fontSize = TextUnit(12f, TextUnitType.Sp),
-				color = black.copy(alpha = 0.8f),
-				overflow = TextOverflow.Ellipsis,
-				modifier = Modifier
-					.padding(start = 2.dp, end = 2.dp)
-			)
-			
-			
-			
-			if (category == null) {
-				val rotationAngle by animateFloatAsState(
-					targetValue = rotationAngleArrowIcon,
-					animationSpec = tween(400)
-				)
 				
-				Icon(
-					imageVector = Icons.Default.KeyboardArrowDown,
-					contentDescription = null,
-					tint = black.copy(alpha = 0.8f),
+				
+				
+				// Category
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.Center,
 					modifier = Modifier
-						.size(28.dp)
-						.padding(start = 4.dp, end = 4.dp, top = 4.dp)
-						.rotate(rotationAngle)
-				)
+						.size(36.dp)
+						.weight(0.9f)
+						.padding(start = 4.dp)
+						.background(
+							gray.copy(alpha = 0.12f),
+							shape = RoundedCornerShape(8.dp)
+						)
+						.then(
+							if (category == null) {
+								Modifier.clickable {
+									onClick()
+								}
+							} else Modifier
+						)
+				) {
+					Icon(
+						painter = painterResource(id = R.drawable.ic_rect),
+						contentDescription = null,
+						tint = Color(category?.color ?: currentCategory.color),
+						modifier = Modifier
+							.size(22.dp)
+							.padding(4.dp)
+					)
+					
+					
+					
+					Text(
+						text = category?.name ?: currentCategory.name,
+						textAlign = TextAlign.Center,
+						fontSize = TextUnit(12f, TextUnitType.Sp),
+						color = black.copy(alpha = 0.8f),
+						overflow = TextOverflow.Ellipsis,
+						modifier = Modifier
+							.padding(start = 2.dp, end = 2.dp)
+					)
+					
+					
+					
+					if (category == null) {
+						val rotationAngle by animateFloatAsState(
+							targetValue = rotationAngleArrowIcon,
+							animationSpec = tween(400)
+						)
+						
+						Icon(
+							imageVector = Icons.Default.KeyboardArrowDown,
+							contentDescription = null,
+							tint = black.copy(alpha = 0.8f),
+							modifier = Modifier
+								.size(28.dp)
+								.padding(start = 4.dp, end = 4.dp, top = 4.dp)
+								.rotate(rotationAngle)
+						)
+					}
+				}
 			}
+			
 		}
+		
+		
+		
 	}
 }
 
@@ -786,7 +840,7 @@ fun TodoItemInput(
 fun TodoItemInputPreview() {
 	TodoItemInput(
 		todoName = "",
-		viewModel = AppViewModel(AppRepository.FakeAppRepository()),
+		viewModel = TodoViewModel(Repository.FakeRepository()),
 		textFieldFocusRequester = FocusRequester(),
 		onDone = { s, l, i -> },
 		onValueChange = {},
@@ -809,7 +863,8 @@ fun CategoryItemInput(
 	textFieldFocusRequester: FocusRequester,
 	inputModeEdit: Boolean = false,
 	onValueChange: (String, Long) -> Unit,
-	onDone: (String, Long) -> Unit
+	onDone: (String, Long) -> Unit,
+	onFocusChange: (FocusState) -> Unit = {}
 ) {
 	val keyboardController = LocalSoftwareKeyboardController.current
 	
@@ -825,11 +880,7 @@ fun CategoryItemInput(
 					color = black.copy(alpha = 0.8f)
 				),
 				onValueChange = { s ->
-					onValueChange(
-						// Max length 20
-						if (s.length > 20) s.substring(0, 20) else s,
-						color
-					)
+					if (s.length <= 20) onValueChange(s, color)
 				},
 				label = {
 					Text("Category Name")
@@ -875,6 +926,7 @@ fun CategoryItemInput(
 					.weight(1f)
 					.padding(end = 8.dp, start = 8.dp)
 					.focusRequester(textFieldFocusRequester)
+					.onFocusChanged { state -> onFocusChange(state) }
 			)
 		}
 		
@@ -975,19 +1027,6 @@ fun CategoryItemInputPreview() {
 					.weight(1f)
 					.padding(end = 8.dp, start = 8.dp)
 			)
-			
-//			OutlinedButton(
-//				onClick = {},
-//				border = BorderStroke(
-//					1.dp,
-//					primary_light
-//				),
-//				modifier = Modifier
-//					.align(Alignment.CenterVertically)
-//					.padding(end = 8.dp)
-//			) {
-//				Text("Add")
-//			}
 		}
 		
 		FlowRow(
@@ -1017,3 +1056,209 @@ fun CategoryItemInputPreview() {
 		}
 	}
 }
+
+
+
+
+
+@Composable
+fun Checkbox(
+	checked: Boolean,
+	onCheckedChange: (Boolean) -> Unit,
+	modifier: Modifier = Modifier
+) {
+	Box(
+		contentAlignment = Alignment.Center,
+		modifier = Modifier
+			.then(modifier)
+			.size(20.dp, 20.dp)
+			.clip(RoundedCornerShape(4.dp))
+			.background(
+				if (checked) black.copy(alpha = 0.9f)
+				else gray.copy(alpha = 0.35f)
+			)
+			.clickable { onCheckedChange(!checked) }
+	) {
+		if (checked) {
+			Icon(
+				imageVector = Icons.Default.Check,
+				tint = Color.White,
+				contentDescription = null
+			)
+		}
+	}
+}
+
+//@Preview(showBackground = true)
+@Composable
+fun CheckboxPreview() {
+	Column {
+		Checkbox(
+			checked = false,
+			onCheckedChange = {}
+		)
+		
+		Checkbox(
+			checked = true,
+			onCheckedChange = {}
+		)
+	}
+}
+
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun TodoCheckboxes(
+	// if the text field is focused, it will use this value,
+	// if it is not focused, it will use todoCheckbox.title
+	value: String,
+	todoCheckboxes: List<TodoCheckbox>,
+	onCheckedChange: (Int, Boolean) -> Unit,
+	onNewItem: (TodoCheckbox) -> Unit,
+	onDelete: (Int) -> Unit,
+	onValueChange: (Int, String) -> Unit,
+	onFocusChange: (String) -> Unit,
+	modifier: Modifier = Modifier
+) {
+	
+	val keyboardController = LocalSoftwareKeyboardController.current
+	
+	// Current TextField focus index
+	var currentFocusIndex by remember { mutableStateOf(-1) }
+	
+	LazyColumn(
+		modifier = Modifier
+			.fillMaxWidth()
+			.wrapContentHeight()
+			.then(modifier)
+	) {
+		
+		itemsIndexed(todoCheckboxes) { index, todoCheckbox ->
+			var isItemChecked by remember { mutableStateOf(todoCheckbox.isComplete) }
+			
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				modifier = Modifier
+					.fillMaxWidth()
+					.padding(8.dp)
+			) {
+				Checkbox(
+					checked = isItemChecked,
+					onCheckedChange = { isChecked ->
+						isItemChecked = isChecked
+						onCheckedChange(todoCheckbox.id, isItemChecked)
+					},
+					modifier = Modifier
+						.weight(0.1f, fill = false)
+						.padding(end = 8.dp)
+				)
+				
+				BasicTextField(
+					value = if (currentFocusIndex == index) value else todoCheckbox.title,
+					singleLine = true,
+					textStyle = TextStyle(
+						textDecoration = if (todoCheckbox.isComplete) TextDecoration.LineThrough
+										 else TextDecoration.None
+					),
+					keyboardOptions = KeyboardOptions(
+						imeAction = ImeAction.Done
+					),
+					keyboardActions = KeyboardActions(
+						onDone = { keyboardController?.hide() }
+					),
+					onValueChange = { s ->
+						if (currentFocusIndex == index) {
+							onValueChange(todoCheckbox.id, s)
+						}
+					},
+					modifier = Modifier
+						.weight(1f)
+						.onFocusChanged { state ->
+							if (state.isFocused) {
+								currentFocusIndex = index
+								onFocusChange(todoCheckbox.title)
+							}
+						}
+				)
+				
+				IconButton(
+					onClick = {
+						onDelete(todoCheckbox.id)
+					},
+					modifier = Modifier
+						.size(20.dp)
+						.padding(start = 8.dp)
+				) {
+					Icon(
+						painter = painterResource(id = R.drawable.ic_x_mark),
+						tint = black,
+						contentDescription = null,
+					)
+				}
+			}
+		}
+		
+		item {
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				modifier = Modifier
+					.padding(top = 12.dp, bottom = 24.dp, start = 8.dp, end = 8.dp)
+					.clickable {
+						onNewItem(
+							TodoCheckbox(
+								title = "",
+								isComplete = false
+							)
+						)
+					}
+			) {
+				Icon(
+					imageVector = Icons.Outlined.Add,
+					tint = gray,
+					contentDescription = null,
+					modifier = Modifier
+						.padding(end = 8.dp)
+				)
+				
+				Text(
+					text = "Add new item",
+					color = black.copy(alpha = 0.8f),
+					overflow = TextOverflow.Ellipsis
+				)
+			}
+		}
+	}
+}
+
+//@Preview(showBackground = true)
+//@Composable
+//fun TodoCheckboxesPreview() {
+//	val checkboxes = listOf(
+//		TodoCheckbox(
+//			title = "Item 1",
+//			isComplete = true
+//		),
+//		TodoCheckbox(
+//			title = "Item 2",
+//			isComplete = false
+//		),
+//		TodoCheckbox(
+//			title = "Item 3",
+//			isComplete = true
+//		),
+//		TodoCheckbox(
+//			title = "Item 4",
+//			isComplete = false
+//		)
+//	)
+//
+//	TodoCheckboxes(
+//		todoCheckboxes = checkboxes,
+//		onCheckedChange = { i, b -> },
+//		onDone = { i, s -> },
+//		onDelete = {},
+//		onFocusChange = { i, fs -> },
+//		onValueChange = { i, s -> },
+//		onNewItem = {}
+//	)
+//}

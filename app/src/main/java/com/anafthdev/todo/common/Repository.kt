@@ -5,11 +5,15 @@ import com.anafthdev.todo.model.Todo
 import com.anafthdev.todo.utils.DatabaseUtil
 import javax.inject.Inject
 
-class AppRepository @Inject constructor(
+class Repository @Inject constructor(
 	private val databaseUtil: DatabaseUtil
-) : AppRepositoryI {
+) : RepositoryI {
 	override fun getAllTodo(action: (List<Todo>) -> Unit) {
 		databaseUtil.getAllTodo(action)
+	}
+	
+	override fun getTodo(mID: Int, action: (Todo) -> Unit) {
+		databaseUtil.getTodo(mID, action)
 	}
 	
 	override fun getTodoByCategoryID(categoryID: Int, action: (List<Todo>) -> Unit) {
@@ -88,8 +92,10 @@ class AppRepository @Inject constructor(
 	
 	
 	
-	class FakeAppRepository: AppRepositoryI {
+	class FakeRepository: RepositoryI {
 		override fun getAllTodo(action: (List<Todo>) -> Unit) {}
+		
+		override fun getTodo(mID: Int, action: (Todo) -> Unit) {}
 		
 		override fun getTodoByCategoryID(categoryID: Int, action: (List<Todo>) -> Unit) {}
 		

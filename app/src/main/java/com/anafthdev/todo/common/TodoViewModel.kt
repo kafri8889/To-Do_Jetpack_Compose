@@ -5,11 +5,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.Todo
-import com.anafthdev.todo.utils.DatabaseUtil
 import javax.inject.Inject
 
-class AppViewModel @Inject constructor(
-	val appRepository: AppRepositoryI
+class TodoViewModel @Inject constructor(
+	val repository: RepositoryI
 ): ViewModel() {
 	
 	private val _todoList = MutableLiveData<List<Todo>>()
@@ -25,23 +24,23 @@ class AppViewModel @Inject constructor(
 	val categoryList: LiveData<List<Category>> = _categoryList
 	
 	fun refresh() {
-		appRepository.getAllTodo { todo -> _todoList.value = todo }
-		appRepository.getAllCategory { categories -> _categoryList.value = categories }
+		repository.getAllTodo { todo -> _todoList.value = todo }
+		repository.getAllCategory { categories -> _categoryList.value = categories }
 	}
 	
-	fun getAllTodo() = appRepository.getAllTodo { todo ->
+	fun getAllTodo() = repository.getAllTodo { todo ->
 		_todoList.value = todo
 	}
 	
-//	fun updateTodo(todo: Todo) = appRepository.updateTodo(todo) {
-//		getAllTodo()
-//	}
-	
-	fun deleteTodoByCategoryID(categoryID: Int) = appRepository.deleteTodoByCategoryID(categoryID) {
+	fun updateTodo(todo: Todo) = repository.updateTodo(todo) {
 		getAllTodo()
 	}
 	
-	fun insertTodo(todo: Todo) = appRepository.insertTodo(todo) {
+	fun deleteTodoByCategoryID(categoryID: Int) = repository.deleteTodoByCategoryID(categoryID) {
+		getAllTodo()
+	}
+	
+	fun insertTodo(todo: Todo) = repository.insertTodo(todo) {
 		getAllTodo()
 	}
 	
@@ -49,24 +48,24 @@ class AppViewModel @Inject constructor(
 	 * get To-do List by categoryID
 	 */
 	fun getTodoListByID(id: Int) {
-		appRepository.getTodoByCategoryID(id) { list ->
+		repository.getTodoByCategoryID(id) { list ->
 			_todoListByID.value = list
 		}
 	}
 	
-	fun getAllCategory() = appRepository.getAllCategory { categories ->
+	fun getAllCategory() = repository.getAllCategory { categories ->
 		_categoryList.value = categories
 	}
 	
-	fun insertCategory(category: Category) = appRepository.insertCategory(category) {
+	fun insertCategory(category: Category) = repository.insertCategory(category) {
 		getAllCategory()
 	}
 	
-	fun updateCategory(category: Category) = appRepository.updateCategory(category) {
+	fun updateCategory(category: Category) = repository.updateCategory(category) {
 		getAllCategory()
 	}
 	
-	fun deleteCategory(category: Category) = appRepository.deleteCategory(category) {
+	fun deleteCategory(category: Category) = repository.deleteCategory(category) {
 		deleteTodoByCategoryID(category.id)
 		getAllCategory()
 	}

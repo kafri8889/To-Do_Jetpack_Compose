@@ -10,6 +10,9 @@ interface ApplicationDatabaseDAO {
 	@Query("SELECT * FROM todo_table")
 	suspend fun getAllTodo(): List<Todo>
 	
+	@Query("SELECT * FROM todo_table WHERE id LIKE :mID")
+	suspend fun getTodo(mID: Int): Todo
+	
 	@Query("SELECT * FROM todo_table WHERE categoryID LIKE :mCategoryID")
 	suspend fun getTodoByCategoryID(mCategoryID: Int): List<Todo>
 	

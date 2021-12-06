@@ -2,6 +2,8 @@ package com.anafthdev.todo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val bianca = Color(0xFFfaf6ea)
+val buttercup = Color(0xFFf4b614)
 val gray = Color(0xFF808080)
 val white = Color(0xFFFFFFFF)
 val pure_black = Color(0xFF000000)
