@@ -36,7 +36,11 @@ class TodoViewModel @Inject constructor(
 		getAllTodo()
 	}
 	
-	fun deleteTodoByCategoryID(categoryID: Int) = repository.deleteTodoByCategoryID(categoryID) {
+	fun deleteTodo(todo: Todo) = repository.deleteTodo(todo) {
+		getAllTodo()
+	}
+	
+	private fun deleteTodoByCategoryID(categoryID: Int) = repository.deleteTodoByCategoryID(categoryID) {
 		getAllTodo()
 	}
 	

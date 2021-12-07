@@ -1,17 +1,15 @@
 package com.anafthdev.todo.ui
 
-import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -63,8 +61,6 @@ import com.google.accompanist.flowlayout.FlowMainAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 @OptIn(ExperimentalUnitApi::class)
 @Composable
@@ -476,13 +472,15 @@ fun CategoryItemPreview() {
 
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TodoItem(
 	todo: Todo,
 	isTodoComplete: Boolean,
 	viewModel: TodoViewModel,
 	onCheckboxValueChange: (Boolean) -> Unit,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	onLongClick: () -> Unit
 ) {
 	
 	var category by remember { mutableStateOf(Category.default) }
@@ -498,13 +496,15 @@ fun TodoItem(
 			.fillMaxWidth()
 			.height(48.dp)
 			.clip(RoundedCornerShape(8.dp))
-			.clickable(
+			.combinedClickable(
+				interactionSource = MutableInteractionSource(),
 				indication = rememberRipple(color = black.copy(alpha = 0.8f)),
-				interactionSource = remember { MutableInteractionSource() }
-			) { onClick() }
+				onClick = onClick,
+				onLongClick = onLongClick
+			)
 	) {
 		Row(
-			verticalAlignment = Alignment.CenterVertically
+			verticalAlignment = Alignment.CenterVertically,
 		) {
 			
 			Checkbox(
@@ -552,7 +552,8 @@ fun TodoItemPreview() {
 			isTodoComplete = false,
 			viewModel = TodoViewModel(Repository.FakeRepository()),
 			onCheckboxValueChange = {},
-			onClick = {}
+			onClick = {},
+			onLongClick = {}
 		)
 		
 		TodoItem(
@@ -567,7 +568,8 @@ fun TodoItemPreview() {
 			isTodoComplete = true,
 			viewModel = TodoViewModel(Repository.FakeRepository()),
 			onCheckboxValueChange = {},
-			onClick = {}
+			onClick = {},
+			onLongClick = {}
 		)
 	}
 }
@@ -1231,34 +1233,34 @@ fun TodoCheckboxes(
 }
 
 //@Preview(showBackground = true)
-//@Composable
-//fun TodoCheckboxesPreview() {
-//	val checkboxes = listOf(
-//		TodoCheckbox(
-//			title = "Item 1",
-//			isComplete = true
-//		),
-//		TodoCheckbox(
-//			title = "Item 2",
-//			isComplete = false
-//		),
-//		TodoCheckbox(
-//			title = "Item 3",
-//			isComplete = true
-//		),
-//		TodoCheckbox(
-//			title = "Item 4",
-//			isComplete = false
-//		)
-//	)
-//
-//	TodoCheckboxes(
-//		todoCheckboxes = checkboxes,
-//		onCheckedChange = { i, b -> },
-//		onDone = { i, s -> },
-//		onDelete = {},
-//		onFocusChange = { i, fs -> },
-//		onValueChange = { i, s -> },
-//		onNewItem = {}
-//	)
-//}
+@Composable
+fun TodoCheckboxesPreview() {
+	val checkboxes = listOf(
+		TodoCheckbox(
+			title = "Item 1",
+			isComplete = true
+		),
+		TodoCheckbox(
+			title = "Item 2",
+			isComplete = false
+		),
+		TodoCheckbox(
+			title = "Item 3",
+			isComplete = true
+		),
+		TodoCheckbox(
+			title = "Item 4",
+			isComplete = false
+		)
+	)
+
+	TodoCheckboxes(
+		value = "",
+		todoCheckboxes = checkboxes,
+		onCheckedChange = { i, b -> },
+		onDelete = {},
+		onFocusChange = {},
+		onValueChange = { i, s -> },
+		onNewItem = {}
+	)
+}

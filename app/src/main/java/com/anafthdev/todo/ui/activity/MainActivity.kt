@@ -27,10 +27,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.anafthdev.todo.BuildConfig
 import com.anafthdev.todo.R
+import com.anafthdev.todo.TodoApplication
 import com.anafthdev.todo.common.TodoViewModel
 import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.data.TodoNavigation
-import com.anafthdev.todo.TodoApplication
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.DrawerMenu
 import com.anafthdev.todo.ui.*
@@ -80,7 +80,6 @@ class MainActivity : ComponentActivity() {
 		
 		val navigationBackStackEntry by navigationController.currentBackStackEntryAsState()
 		val currentRoute = navigationBackStackEntry?.destination?.route ?: TodoNavigation.Navigation.DashboardScreen.route
-//		var currentCategoryRoute by remember { mutableStateOf("") }
 		Timber.i("current route: $currentRoute")
 		
 		val todoList by viewModel.todoList.observeAsState(initial = emptyList())
@@ -360,7 +359,7 @@ class MainActivity : ComponentActivity() {
 					if (todoID != -1) {
 						EditTodoScreen(
 							todoID = todoID,
-							viewModel = viewModel,
+							viewModel = viewModel
 						)
 					} else "Todo not found".toast(this@MainActivity)
 				}

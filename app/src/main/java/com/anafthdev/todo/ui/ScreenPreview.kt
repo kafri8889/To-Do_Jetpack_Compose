@@ -1,8 +1,5 @@
 package com.anafthdev.todo.ui
 
-import android.app.DatePickerDialog
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,12 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.runtime.*
-import androidx.compose.runtime.R
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -37,9 +32,6 @@ import com.anafthdev.todo.common.TodoViewModel
 import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.Todo
 import com.anafthdev.todo.ui.theme.*
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Preview(showSystemUi = true)
 @Composable
@@ -68,7 +60,8 @@ fun DashboardScreenPreview() {
 					isTodoComplete = index == 1,
 					viewModel = fakeViewModel,
 					onCheckboxValueChange = {},
-					onClick = {}
+					onClick = {},
+					onLongClick = {}
 				)
 			}
 		}
