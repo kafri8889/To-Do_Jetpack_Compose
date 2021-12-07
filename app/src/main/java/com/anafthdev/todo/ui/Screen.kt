@@ -1,18 +1,16 @@
 package com.anafthdev.todo.ui
 
 import android.app.DatePickerDialog
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -32,23 +30,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.ExperimentalUnitApi
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Popup
 import androidx.navigation.NavHostController
 import com.anafthdev.todo.R
-import com.anafthdev.todo.data.CategoryColor
-import com.anafthdev.todo.model.Category
-import com.anafthdev.todo.utils.ComposeUtil
 import com.anafthdev.todo.common.TodoViewModel
+import com.anafthdev.todo.data.CategoryColor
 import com.anafthdev.todo.data.TodoNavigation
+import com.anafthdev.todo.model.Category
 import com.anafthdev.todo.model.Todo
 import com.anafthdev.todo.ui.theme.*
 import com.anafthdev.todo.utils.AppUtil.get
-import com.anafthdev.todo.utils.AppUtil.toast
+import com.anafthdev.todo.utils.ComposeUtil
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -63,7 +57,6 @@ fun DashboardScreen(
 	viewModel: TodoViewModel
 ) {
 	
-	val context = LocalContext.current
 	val keyboardController = LocalSoftwareKeyboardController.current
 	val focusManager = LocalFocusManager.current
 	
@@ -78,6 +71,10 @@ fun DashboardScreen(
 	
 	var todoName by remember { mutableStateOf("") }
 	var selectedCategoryID by remember { mutableStateOf(Category.default.id) }
+	
+	var showTodoPopupMenu by remember { mutableStateOf(false) }
+	var todoToDelete by remember { mutableStateOf(Todo.todo_sample) }
+	
 	val textFieldFocusRequester = remember { FocusRequester() }
 	
 	// clear textField focus when keyboard closed
@@ -151,6 +148,44 @@ fun DashboardScreen(
 			
 			
 			
+			if (showTodoPopupMenu) {
+				Popup(
+					alignment = Alignment.TopEnd,
+					onDismissRequest = {
+						showTodoPopupMenu = false
+					}
+				) {
+					Card(
+						elevation = 4.dp,
+						shape = RoundedCornerShape(8.dp),
+						onClick = {
+							viewModel.deleteTodo(todoToDelete)
+							showTodoPopupMenu = false
+						},
+					) {
+						Row(
+							verticalAlignment = Alignment.CenterVertically,
+							modifier = Modifier
+								.padding(8.dp)
+						) {
+							Icon(
+								imageVector = Icons.Default.Delete,
+								contentDescription = null,
+								tint = black.copy(alpha = 0.8f),
+								modifier = Modifier.padding(start = 8.dp)
+							)
+							
+							Text(
+								text = "Delete",
+								color = black.copy(alpha = 0.8f)
+							)
+						}
+					}
+				}
+			}
+			
+			
+			
 			LazyColumn {
 				items(todoList) { todo ->
 					var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
@@ -178,8 +213,13 @@ fun DashboardScreen(
 									restoreState = false
 								}
 							}
-						}
+						},
+						onLongClick = {
+							todoToDelete = todo
+							showTodoPopupMenu = true
+						},
 					)
+					
 				}
 			}
 		}
@@ -190,6 +230,7 @@ fun DashboardScreen(
 
 
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun CompleteScreen(
 	navController: NavHostController,
@@ -198,7 +239,47 @@ fun CompleteScreen(
 	
 	val todoList by viewModel.todoList.observeAsState(initial = emptyList())
 	
+	var showTodoPopupMenu by remember { mutableStateOf(false) }
+	var todoToDelete by remember { mutableStateOf(Todo.todo_sample) }
+	
 	Column {
+		
+		if (showTodoPopupMenu) {
+			Popup(
+				alignment = Alignment.TopEnd,
+				onDismissRequest = {
+					showTodoPopupMenu = false
+				}
+			) {
+				Card(
+					elevation = 4.dp,
+					shape = RoundedCornerShape(8.dp),
+					onClick = {
+						viewModel.deleteTodo(todoToDelete)
+						showTodoPopupMenu = false
+					},
+				) {
+					Row(
+						verticalAlignment = Alignment.CenterVertically,
+						modifier = Modifier
+							.padding(8.dp)
+					) {
+						Icon(
+							imageVector = Icons.Default.Delete,
+							contentDescription = null,
+							tint = black.copy(alpha = 0.8f),
+							modifier = Modifier.padding(start = 8.dp)
+						)
+						
+						Text(
+							text = "Delete",
+							color = black.copy(alpha = 0.8f)
+						)
+					}
+				}
+			}
+		}
+		
 		LazyColumn {
 			items(todoList.filter { it.isComplete }) { todo ->
 				var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
@@ -226,6 +307,10 @@ fun CompleteScreen(
 								restoreState = false
 							}
 						}
+					},
+					onLongClick = {
+						todoToDelete = todo
+						showTodoPopupMenu = true
 					}
 				)
 			}
@@ -350,7 +435,10 @@ fun CategoriesScreen(
 
 
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(
+	ExperimentalComposeUiApi::class,
+	ExperimentalMaterialApi::class,
+)
 @Composable
 fun CategoryScreen(
 	viewModel: TodoViewModel,
@@ -367,6 +455,10 @@ fun CategoryScreen(
 	
 	var todoName by remember { mutableStateOf("") }
 	var category by remember { mutableStateOf(Category.default) }
+	
+	var showTodoPopupMenu by remember { mutableStateOf(false) }
+	var todoToDelete by remember { mutableStateOf(Todo.todo_sample) }
+	
 	val textFieldFocusRequester = remember { FocusRequester() }
 	var hasNavigate by remember { mutableStateOf(false) }
 	
@@ -411,6 +503,46 @@ fun CategoryScreen(
 			}
 		)
 		
+		
+		
+		if (showTodoPopupMenu) {
+			Popup(
+				alignment = Alignment.TopEnd,
+				onDismissRequest = {
+					showTodoPopupMenu = false
+				}
+			) {
+				Card(
+					elevation = 4.dp,
+					shape = RoundedCornerShape(8.dp),
+					onClick = {
+						viewModel.deleteTodo(todoToDelete)
+						showTodoPopupMenu = false
+					},
+				) {
+					Row(
+						verticalAlignment = Alignment.CenterVertically,
+						modifier = Modifier
+							.padding(8.dp)
+					) {
+						Icon(
+							imageVector = Icons.Default.Delete,
+							contentDescription = null,
+							tint = black.copy(alpha = 0.8f),
+							modifier = Modifier.padding(start = 8.dp)
+						)
+						
+						Text(
+							text = "Delete",
+							color = black.copy(alpha = 0.8f)
+						)
+					}
+				}
+			}
+		}
+		
+		
+		
 		LazyColumn {
 			items(todoList) { todo ->
 				var isTodoComplete by remember { mutableStateOf(todo.isComplete) }
@@ -438,8 +570,13 @@ fun CategoryScreen(
 						viewModel.repository.updateTodo(todo) {
 							viewModel.getTodoListByID(categoryID)
 						}
+					},
+					onLongClick = {
+						todoToDelete = todo
+						showTodoPopupMenu = true
 					}
 				)
+				
 			}
 		}
 	}
@@ -454,12 +591,10 @@ fun CategoryScreen(
 @Composable
 fun EditTodoScreen(
 	todoID: Int,
-	viewModel: TodoViewModel
+	viewModel: TodoViewModel,
 ) {
 	
 	val context = LocalContext.current
-	val focusManager = LocalFocusManager.current
-	val keyboardController = LocalSoftwareKeyboardController.current
 	
 	val categoryList by viewModel.categoryList.observeAsState(initial = emptyList())
 	val scope = rememberCoroutineScope()
@@ -498,10 +633,6 @@ fun EditTodoScreen(
 		true.also { hasNavigate = it }
 	}
 	
-//	BackHandler {
-//
-//	}
-	
 	BottomSheetScaffold(
 		scaffoldState = scaffoldState,
 		sheetBackgroundColor = surface_light,
@@ -534,7 +665,6 @@ fun EditTodoScreen(
 		Column(
 			modifier = Modifier
 				.fillMaxSize()
-//				.verticalScroll(rememberScrollState())
 		) {
 			
 			// Checkbox and To-Do title
